@@ -1,0 +1,110 @@
+﻿using Microsoft.CodeAnalysis;
+using System.Linq;
+using System.Runtime.InteropServices;
+
+namespace RuniOS.APIBridge
+{
+    public partial class BridgeGeneratorBuilder
+    {
+        [StructLayout(LayoutKind.Auto)]
+        readonly partial struct ClassBuilder(BridgeGeneratorBuilder builder, INamedTypeSymbol targetSymbol)
+        {
+            public static void Build(BridgeGeneratorBuilder builder, INamedTypeSymbol targetSymbol) => new ClassBuilder(builder, targetSymbol).Build();
+            
+            readonly string bridgeName = targetSymbol.GetBridgeTypeName();
+            readonly string bridgeTypeName = targetSymbol.GetBridgeTypeName() + targetSymbol.GetTypeParametersText();
+            readonly string targetTypeName = targetSymbol.GetFullTypeName();
+            readonly bool targetIsAbstract = targetSymbol.IsAbstract;
+            readonly bool targetIsStatic = targetSymbol.IsStatic;
+            readonly bool targetIsNonPublic = targetSymbol.IsNonPublicMember();
+            readonly INamedTypeSymbol? targetPublicBaseType = targetSymbol.GetPublicBaseType();
+            
+            void Append(string text = "") => builder.Append(text);
+            void AppendLine(string text = "") => builder.AppendLine(text);
+            void StartBlock() => builder.StartBlock();
+            void EndBlock() => builder.EndBlock();
+
+            public void Build()
+            {
+                // __targetType 필드
+                AppendLine("/// <summary>");
+                AppendLine("/// 이 브릿지의 타겟 타입입니다.");
+                AppendLine("/// </summary>");
+                AppendLine($"public static global::System.Type __targetType {{ get; }} = typeof({targetTypeName});"); // typeof는 항상 원래 타입을 사용
+                AppendLine();
+
+                // 모든 생성자에 대한 __CreateInstance 오버로드 생성 (정적 클래스일 경우 제외)
+                if (!targetIsStatic)
+                {
+                    if (!targetIsAbstract) // 정적/추상 클래스는 인스턴스 생성 불가
+                    {
+                        foreach (var ctor in targetSymbol.Constructors.Where(static x => !x.IsImplicitlyDeclared)) // 암시적 생성자 제외
+                        {
+                            var parameters = string.Join(", ", ctor.Parameters.GetParameterText());
+                            var callParameters = string.Join(", ", ctor.Parameters.GetCallParameterText());
+                            bool isNonPublic = ctor.IsNonPublicMember();
+
+                            if (isNonPublic || targetIsNonPublic)
+                            {
+                                AppendLine("/// <summary>");
+                                AppendLine("/// 타겟 타입을 만들고 브릿지로 생성합니다.");
+                                AppendLine("/// </summary>");
+                            }
+
+                            if (isNonPublic)
+                                AppendLine($"public static {bridgeTypeName} __CreateInstanceNonPublic({parameters}) => new {bridgeTypeName}(new {targetTypeName}({callParameters}));");
+                            else if (targetIsNonPublic)
+                                AppendLine($"public static {bridgeTypeName} __CreateInstance({parameters}) => new {bridgeTypeName}(new {targetTypeName}({callParameters}));");
+                            
+                            if (isNonPublic || targetIsNonPublic)
+                                AppendLine();
+                        }
+                    }
+
+                    // __cached 및 __GetInstanceFrom
+                    // __cached의 키 타입은 항상 원래 타입
+                    AppendLine($"private static readonly global::System.Runtime.CompilerServices.ConditionalWeakTable<{targetTypeName}, {bridgeTypeName}> __cached = new();");
+                    AppendLine();
+
+                    // __GetInstanceFrom의 매개변수 타입 설정
+                    string getInstanceFromParamType = targetPublicBaseType == null ? "object" : targetPublicBaseType.GetFullTypeName();
+
+                    AppendLine("/// <summary>");
+                    AppendLine("/// 타겟 타입의 인스턴스로 브릿지를 생성합니다.");
+                    AppendLine("/// </summary>");
+                    AppendLine("/// <exception cref=\"global::System.ArgumentNullException\">인스턴스가 null일 경우 발생합니다.</exception>");
+                    AppendLine("/// <exception cref=\"global::System.ArgumentException\">인스턴스의 타입이 유효하지 않을 경우 발생합니다.</exception>");
+                    AppendLine($"public static {bridgeTypeName} __GetInstanceFrom({getInstanceFromParamType} instance)");
+                    StartBlock();
+                    {
+                        AppendLine("if (instance == null) throw new global::System.ArgumentNullException(nameof(instance));");
+                        AppendLine("if (!__targetType.IsInstanceOfType(instance)) throw new global::System.ArgumentException(\"Invalid instance type\");");
+                        AppendLine();
+                        AppendLine($"{targetTypeName} castedInstance = ({targetTypeName})instance;");
+                        AppendLine($"if (!__cached.TryGetValue(castedInstance, out {bridgeTypeName}? bridgeInstance))");
+                        StartBlock();
+                        {
+                            AppendLine($"bridgeInstance = new {bridgeTypeName}(castedInstance);");
+                            AppendLine("__cached.Add(castedInstance, bridgeInstance);");
+                        }
+                        EndBlock();
+                        AppendLine();
+                        AppendLine("return bridgeInstance;");
+                    }
+                    EndBlock();
+                    AppendLine();
+
+                    // 생성자 및 __instance 필드
+                    AppendLine($"private {bridgeName}({targetTypeName} instance) => __instance = instance;"); // 생성자 매개변수는 원래 타입
+                    AppendLine();
+                    AppendLine("/// <summary>");
+                    AppendLine("/// 타겟 타입의 인스턴스입니다.");
+                    AppendLine("/// </summary>");
+                    AppendLine($"public {getInstanceFromParamType} __instance {{ get; }}"); // __instance 필드는 원래 타입
+                }
+
+                MemberBuilder.Build(builder, targetSymbol);
+            }
+        }
+    }
+}
