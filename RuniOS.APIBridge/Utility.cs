@@ -19,24 +19,25 @@ namespace RuniOS.APIBridge
                 return true;
         
             var originalAttributesAttribute = symbol.GetAttributes()
-                .FirstOrDefault(static ad => ad.AttributeClass?.ToDisplayString() == "BepInEx.AssemblyPublicizer.OriginalAttributesAttribute");
+                .Where(static ad => ad.AttributeClass?.GetFullTypeName() == "global::BepInEx.AssemblyPublicizer.OriginalAttributesAttribute")
+                .FirstOrDefault();
 
             if (originalAttributesAttribute != null && originalAttributesAttribute.ConstructorArguments.Length > 0)
             {
                 var arg = originalAttributesAttribute.ConstructorArguments[0];
                 if (arg.Kind == TypedConstantKind.Enum)
                 {
-                    if (arg.Type?.ToDisplayString() == "System.Reflection.MethodAttributes")
+                    if (arg.Type?.GetFullTypeName() == "global::System.Reflection.MethodAttributes")
                     {
                         if (arg.Value is int enumValue)
                             return (enumValue & (int)MethodAttributes.MemberAccessMask) != (int)MethodAttributes.Public;
                     }
-                    else if (arg.Type?.ToDisplayString() == "System.Reflection.FieldAttributes")
+                    else if (arg.Type?.GetFullTypeName() == "global::System.Reflection.FieldAttributes")
                     {
                         if (arg.Value is int enumValue)
                             return (enumValue & (int)FieldAttributes.FieldAccessMask) != (int)FieldAttributes.Public;
                     }
-                    else if (arg.Type?.ToDisplayString() == "System.Reflection.TypeAttributes")
+                    else if (arg.Type?.GetFullTypeName() == "global::System.Reflection.TypeAttributes")
                     {
                         if (arg.Value is int enumValue)
                             return (enumValue & (int)TypeAttributes.VisibilityMask) != (int)TypeAttributes.Public;
@@ -54,23 +55,9 @@ namespace RuniOS.APIBridge
         /// <returns>심볼이 InternalCall이면 <see langword="true"/>, 아니면 <see langword="false"/>를 반환합니다.</returns>
         public static bool IsInternalCall(this ISymbol symbol)
         {
-            var originalAttributesAttribute = symbol.GetAttributes()
-                .FirstOrDefault(static ad => ad.AttributeClass?.ToDisplayString() == "System.Runtime.CompilerServices.MethodImplAttribute");
+            if (symbol is IMethodSymbol methodSymbol)
+                return methodSymbol.MethodImplementationFlags == MethodImplAttributes.InternalCall;
 
-            if (originalAttributesAttribute != null && originalAttributesAttribute.ConstructorArguments.Length > 0)
-            {
-                var arg = originalAttributesAttribute.ConstructorArguments[0];
-                if (arg.Kind == TypedConstantKind.Enum && arg.Type?.ToDisplayString() == "System.Runtime.CompilerServices.MethodImplOptions")
-                {
-                    if (arg.Value is int enumValue)
-                        return (enumValue & (int)MethodImplOptions.InternalCall) != 0;
-                }
-                else if (arg.Kind == TypedConstantKind.Primitive && arg.Type?.ToDisplayString() == "short")
-                {
-                    if (arg.Value is short enumValue)
-                        return (enumValue & (int)MethodImplOptions.InternalCall) != 0;
-                }
-            }
             return false;
         }
 
@@ -165,7 +152,7 @@ namespace RuniOS.APIBridge
         /// <returns>브릿지 타입의 완전한 이름 또는 원본 타입의 이름입니다.</returns>
         public static string GetTypeNameOrBridgeName(this ITypeSymbol symbol)
         {
-            if (symbol.IsNonPublicMember() && symbol is INamedTypeSymbol namedTypeSymbol and not { TypeKind: TypeKind.Delegate })
+            if (symbol.IsNonPublicMember() && symbol.TypeKind != TypeKind.Delegate)
                 return symbol.GetBridgeTypeFullName();
 
             return symbol switch
@@ -457,11 +444,11 @@ namespace RuniOS.APIBridge
                     keyword += "in ";
                     break;
                 }
-                case RefKind.RefReadOnlyParameter:
+                /*case RefKind.RefReadOnlyParameter:
                 {
                     keyword += "ref readonly ";
                     break;
-                }
+                }*/
             }
 
             keyword += $"{parameterSymbol.Type.GetTypeNameOrBridgeName()} {parameterSymbol.Name}";
@@ -522,13 +509,13 @@ namespace RuniOS.APIBridge
                         result += "__";
                     break;
                 }
-                case RefKind.RefReadOnlyParameter:
+                /*case RefKind.RefReadOnlyParameter:
                 {
                     result += "ref readonly ";
                     if (isNonPublic)
                         result += "__";
                     break;
-                }
+                }*/
                 case RefKind.None:
                 {
                     if (isNonPublic)

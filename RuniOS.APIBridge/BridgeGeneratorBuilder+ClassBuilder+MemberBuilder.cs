@@ -31,7 +31,7 @@ namespace RuniOS.APIBridge
                 public void Build()
                 {
                     bool targetIsNonPublic = this.targetIsNonPublic;
-                    var members = targetSymbol.GetMembers().Where(m => m is IFieldSymbol or IPropertySymbol or IEventSymbol or IMethodSymbol && (targetIsNonPublic || m.IsNonPublicMember()) && !m.IsImplicitlyDeclared && !m.IsInternalCall() && (m.Kind == SymbolKind.Method || m.Kind == SymbolKind.Property) && !m.IsExplicitInterfaceImplementations());
+                    var members = targetSymbol.GetMembers().Where(x => x is IFieldSymbol or IPropertySymbol or IEventSymbol or IMethodSymbol && (targetIsNonPublic || x.IsNonPublicMember()) && !x.IsImplicitlyDeclared && !x.IsInternalCall() && !x.IsExplicitInterfaceImplementations());
                     if (members.Any())
                     {
                         AppendLine();
@@ -298,7 +298,11 @@ namespace RuniOS.APIBridge
                                     Append("unsafe ");
                                 Append($"{returnType} {memberName}{method.GetTypeParametersText()}");
                                 Append($"({parameters})");
-                                Append($" {method.GetConstraintsText()}");
+                                {
+                                    string constraintsText = method.GetConstraintsText();
+                                    if (!string.IsNullOrEmpty(constraintsText))
+                                        Append($" {constraintsText}");
+                                }
                                 if (!method.Parameters.Where(static x => x.Type.IsNonPublicMember() && x.RefKind != RefKind.None).Any())
                                 {
                                     Append(" => ");

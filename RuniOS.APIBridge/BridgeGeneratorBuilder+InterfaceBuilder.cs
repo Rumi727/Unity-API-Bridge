@@ -1,5 +1,4 @@
 ﻿using Microsoft.CodeAnalysis;
-using System.Collections.Generic;
 using System.Runtime.InteropServices;
 
 namespace RuniOS.APIBridge

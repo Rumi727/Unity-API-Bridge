@@ -31,7 +31,7 @@ namespace RuniOS.APIBridge
                 public void Build()
                 {
                     bool targetIsNonPublic = this.targetIsNonPublic;
-                    var members = targetSymbol.GetMembers().Where(m => m is IFieldSymbol or IPropertySymbol or IEventSymbol or IMethodSymbol && (targetIsNonPublic || m.IsNonPublicMember()) && !m.IsImplicitlyDeclared && !m.IsInternalCall());
+                    var members = targetSymbol.GetMembers().Where(x => x is IFieldSymbol or IPropertySymbol or IEventSymbol or IMethodSymbol && (targetIsNonPublic || x.IsNonPublicMember()) && !x.IsImplicitlyDeclared && !x.IsInternalCall() && !x.IsExplicitInterfaceImplementations());
                     if (members.Any())
                     {
                         AppendLine();
