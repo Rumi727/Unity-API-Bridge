@@ -15,7 +15,7 @@ namespace RuniOS.APIBridge
             readonly string bridgeTypeName = targetSymbol.GetBridgeTypeName() + targetSymbol.GetTypeParametersText();
             readonly string targetTypeName = targetSymbol.GetFullTypeName();
             readonly bool targetIsAbstract = targetSymbol.IsAbstract;
-            readonly bool targetIsStatic = targetSymbol.IsStatic;
+            readonly bool targetIsStatic = targetSymbol.IsStatic || builder.forceStatic;
             readonly bool targetIsNonPublic = targetSymbol.IsNonPublicMember();
             readonly INamedTypeSymbol? targetPublicBaseType = targetSymbol.GetPublicBaseType();
             
@@ -36,7 +36,7 @@ namespace RuniOS.APIBridge
                 // 모든 생성자에 대한 __CreateInstance 오버로드 생성 (정적 클래스일 경우 제외)
                 if (!targetIsStatic)
                 {
-                    if (!targetIsAbstract) // 정적/추상 클래스는 인스턴스 생성 불가
+                    if (!targetIsAbstract && !builder.skipCreateInstance) // 정적/추상 클래스는 인스턴스 생성 불가
                     {
                         foreach (var ctor in targetSymbol.Constructors.Where(static x => !x.IsImplicitlyDeclared)) // 암시적 생성자 제외
                         {

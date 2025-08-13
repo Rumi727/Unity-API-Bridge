@@ -1,6 +1,7 @@
 ﻿using Microsoft.CodeAnalysis;
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Linq;
 using System.Text;
 
@@ -8,9 +9,13 @@ namespace RuniOS.APIBridge
 {
     public partial class BridgeGeneratorBuilder
     {
-        public static string Build(INamedTypeSymbol targetSymbol, out IReadOnlyList<INamedTypeSymbol> nonPublicTypeSymbols, int tabSpaceCount = 4) => new BridgeGeneratorBuilder(targetSymbol, tabSpaceCount).Build(out nonPublicTypeSymbols);
+        public static string Build(INamedTypeSymbol targetSymbol, ImmutableArray<string> includeMembers, ImmutableArray<string> excludeMembers, bool forceStatic, bool skipCreateInstance, out IReadOnlyList<INamedTypeSymbol> nonPublicTypeSymbols, int tabSpaceCount = 4) => new BridgeGeneratorBuilder(targetSymbol, includeMembers, excludeMembers, forceStatic, skipCreateInstance, tabSpaceCount).Build(out nonPublicTypeSymbols);
         
         readonly INamedTypeSymbol targetSymbol;
+        readonly ImmutableArray<string> includeMembers;
+        readonly ImmutableArray<string> excludeMembers;
+        readonly bool forceStatic;
+        readonly bool skipCreateInstance;
         readonly int tabSpaceCount;
         
         readonly StringBuilder builder = new StringBuilder();
@@ -19,9 +24,13 @@ namespace RuniOS.APIBridge
         
         readonly List<INamedTypeSymbol> nonPublicTypeSymbols = [];
         
-        BridgeGeneratorBuilder(INamedTypeSymbol targetSymbol, int tabSpaceCount = 4)
+        BridgeGeneratorBuilder(INamedTypeSymbol targetSymbol, ImmutableArray<string> includeMembers, ImmutableArray<string> excludeMembers, bool forceStatic, bool skipCreateInstance, int tabSpaceCount = 4)
         {
             this.targetSymbol = targetSymbol;
+            this.includeMembers = includeMembers;
+            this.excludeMembers = excludeMembers;
+            this.forceStatic = forceStatic;
+            this.skipCreateInstance = skipCreateInstance;
             this.tabSpaceCount = tabSpaceCount;
         }
 
@@ -93,7 +102,7 @@ namespace RuniOS.APIBridge
                 {
                     if (containingType.IsObsolete(out string message) && SymbolEqualityComparer.Default.Equals(containingType, containingTypes.Last()))
                         AppendLine($"[System.ObsoleteAttribute({message})]");
-                    AppendLine(containingType.GetTypeDeclarationText());
+                    AppendLine(containingType.GetTypeDeclarationText(forceStatic));
                     StartBlock();
                 }
 

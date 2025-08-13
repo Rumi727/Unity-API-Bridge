@@ -2,11 +2,10 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
-using System.Runtime.CompilerServices;
 
 namespace RuniOS.APIBridge
 {
-    public static class Utility
+    public static class SymbolExtensions
     {
         /// <summary>
         /// 주어진 심볼이 OriginalAttributesAttribute를 통해 원래 비공개였는지 확인합니다.
@@ -117,7 +116,7 @@ namespace RuniOS.APIBridge
         /// </summary>
         /// <param name="symbol">대상 심볼입니다.</param>
         /// <returns>생성된 브릿지 네임스페이스 문자열입니다.</returns>
-        public static string GetBridgeNamespace(this ITypeSymbol symbol)
+        public static string GetBridgeNamespace(this INamedTypeSymbol symbol)
         {
             if (symbol.ContainingNamespace == null || string.IsNullOrEmpty(symbol.ContainingNamespace.Name))
                 return "RuniOS.APIBridge";
@@ -131,7 +130,7 @@ namespace RuniOS.APIBridge
         /// </summary>
         /// <param name="symbol">대상 심볼입니다.</param>
         /// <returns>생성된 브릿지 타입 이름 문자열입니다.</returns>
-        public static string GetBridgeTypeNameIncludeContaining(this ITypeSymbol symbol)
+        public static string GetBridgeTypeNameIncludeContaining(this INamedTypeSymbol symbol)
         {
             string result = string.Empty;
             if (symbol.ContainingType != null)
@@ -140,9 +139,9 @@ namespace RuniOS.APIBridge
             return result + symbol.GetBridgeTypeName() + symbol.GetTypeArgumentsText();
         }
 
-        public static string GetBridgeTypeFullName(this ITypeSymbol symbol) => $"global::{symbol.GetBridgeNamespace()}.{symbol.GetBridgeTypeNameIncludeContaining()}"; 
+        public static string GetBridgeTypeFullName(this INamedTypeSymbol symbol) => $"global::{symbol.GetBridgeNamespace()}.{symbol.GetBridgeTypeNameIncludeContaining()}"; 
         
-        public static string GetBridgeTypeName(this ITypeSymbol symbol) => symbol.Name + "Bridge";
+        public static string GetBridgeTypeName(this INamedTypeSymbol symbol) => symbol.Name + "Bridge";
 
         /// <summary>
         /// 주어진 타입 심볼에 대한 브릿지 타입의 완전한 이름을 반환합니다.<br/>
@@ -152,8 +151,8 @@ namespace RuniOS.APIBridge
         /// <returns>브릿지 타입의 완전한 이름 또는 원본 타입의 이름입니다.</returns>
         public static string GetTypeNameOrBridgeName(this ITypeSymbol symbol)
         {
-            if (symbol.IsNonPublicMember() && symbol.TypeKind != TypeKind.Delegate)
-                return symbol.GetBridgeTypeFullName();
+            if (symbol.IsNonPublicMember() && symbol.TypeKind != TypeKind.Delegate && symbol is INamedTypeSymbol namedTypeSymbol)
+                return namedTypeSymbol.GetBridgeTypeFullName();
 
             return symbol switch
             {
@@ -281,12 +280,12 @@ namespace RuniOS.APIBridge
             _ => string.Empty
         };
 
-        public static string GetTypeDeclarationText(this INamedTypeSymbol symbol)
+        public static string GetTypeDeclarationText(this INamedTypeSymbol symbol, bool forceStatic)
         {
             string result = "public ";
             if (symbol.TypeKind == TypeKind.Class)
             {
-                if (symbol.IsStatic)
+                if (symbol.IsStatic || forceStatic)
                     result += "static ";
                 if (symbol.IsSealed)
                     result += "sealed ";

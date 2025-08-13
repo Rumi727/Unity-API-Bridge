@@ -14,7 +14,7 @@ namespace RuniOS.APIBridge
             readonly string bridgeName = targetSymbol.GetBridgeTypeName();
             readonly string bridgeTypeName = targetSymbol.GetBridgeTypeName() + targetSymbol.GetTypeParametersText();
             readonly string targetTypeName = targetSymbol.GetFullTypeName();
-            readonly bool targetIsStatic = targetSymbol.IsStatic;
+            readonly bool targetIsStatic = builder.forceStatic;
             readonly bool targetIsNonPublic = targetSymbol.IsNonPublicMember();
             
             void Append(string text = "") => builder.Append(text);
@@ -30,32 +30,35 @@ namespace RuniOS.APIBridge
                 AppendLine("/// </summary>");
                 AppendLine($"public static global::System.Type __targetType {{ get; }} = typeof({targetTypeName});"); // typeof는 항상 원래 타입을 사용
                 AppendLine();
-                
-                foreach (var ctor in targetSymbol.Constructors.Where(static x => !x.IsImplicitlyDeclared)) // 암시적 생성자 제외
-                {
-                    var parameters = string.Join(", ", ctor.Parameters.GetParameterText());
-                    var callParameters = string.Join(", ", ctor.Parameters.GetCallParameterText());
-                    bool isNonPublic = ctor.IsNonPublicMember();
 
-                    if (isNonPublic || targetIsNonPublic)
-                    {
-                        AppendLine("/// <summary>");
-                        AppendLine("/// 타겟 타입을 만들고 브릿지로 생성합니다.");
-                        AppendLine("/// </summary>");
-                    }
-
-                    if (isNonPublic)
-                        AppendLine($"public static {bridgeTypeName} __CreateInstanceNonPublic({parameters}) => new {bridgeTypeName}(new {targetTypeName}({callParameters}));");
-                    else if (targetIsNonPublic)
-                        AppendLine($"public static {bridgeTypeName} __CreateInstance({parameters}) => new {bridgeTypeName}(new {targetTypeName}({callParameters}));");
-                            
-                    if (isNonPublic || targetIsNonPublic)
-                        AppendLine();
-                }
-
-                // 모든 생성자에 대한 __CreateInstance 오버로드 생성
+                // 모든 생성자에 대한 __CreateInstance 오버로드 생성  (정적으로 표시됐을 경우 경우 제외)
                 if (!targetIsStatic)
                 {
+                    if (!builder.skipCreateInstance)
+                    {
+                        foreach (var ctor in targetSymbol.Constructors.Where(static x => !x.IsImplicitlyDeclared)) // 암시적 생성자 제외
+                        {
+                            var parameters = string.Join(", ", ctor.Parameters.GetParameterText());
+                            var callParameters = string.Join(", ", ctor.Parameters.GetCallParameterText());
+                            bool isNonPublic = ctor.IsNonPublicMember();
+
+                            if (isNonPublic || targetIsNonPublic)
+                            {
+                                AppendLine("/// <summary>");
+                                AppendLine("/// 타겟 타입을 만들고 브릿지로 생성합니다.");
+                                AppendLine("/// </summary>");
+                            }
+
+                            if (isNonPublic)
+                                AppendLine($"public static {bridgeTypeName} __CreateInstanceNonPublic({parameters}) => new {bridgeTypeName}(new {targetTypeName}({callParameters}));");
+                            else if (targetIsNonPublic)
+                                AppendLine($"public static {bridgeTypeName} __CreateInstance({parameters}) => new {bridgeTypeName}(new {targetTypeName}({callParameters}));");
+
+                            if (isNonPublic || targetIsNonPublic)
+                                AppendLine();
+                        }
+                    }
+                    
                     // __GetInstanceFrom의 매개변수 타입 설정
                     var getInstanceFromParamType = targetIsNonPublic ? "object" : targetTypeName;
 

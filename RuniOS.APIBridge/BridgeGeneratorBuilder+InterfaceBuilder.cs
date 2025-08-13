@@ -13,6 +13,7 @@ namespace RuniOS.APIBridge
             readonly string bridgeName = targetSymbol.GetBridgeTypeName();
             readonly string bridgeTypeName = targetSymbol.GetBridgeTypeName() + targetSymbol.GetTypeParametersText();
             readonly string targetTypeName = targetSymbol.GetFullTypeName();
+            readonly bool targetIsStatic = builder.forceStatic;
             readonly bool targetIsNonPublic = targetSymbol.IsNonPublicMember();
             readonly INamedTypeSymbol? targetPublicBaseType = targetSymbol.GetPublicBaseType();
             
@@ -30,60 +31,66 @@ namespace RuniOS.APIBridge
                 AppendLine($"public static global::System.Type __targetType {{ get; }} = typeof({targetTypeName});"); // typeof는 항상 원래 타입을 사용
                 AppendLine();
 
-                // __cached 및 __GetInstanceFrom
-                // __cached의 키 타입은 항상 원래 타입
-                AppendLine($"private static readonly global::System.Runtime.CompilerServices.ConditionalWeakTable<{targetTypeName}, __{bridgeName}> __cached = new();");
-                AppendLine();
-
-                // __GetInstanceFrom의 매개변수 타입 설정
-                string getInstanceFromParamType = targetPublicBaseType == null ? "object" : targetPublicBaseType.GetFullTypeName();
-
-                AppendLine("/// <summary>");
-                AppendLine("/// 타겟 타입의 인스턴스로 브릿지를 생성합니다.");
-                AppendLine("/// </summary>");
-                AppendLine("/// <exception cref=\"global::System.ArgumentNullException\">인스턴스가 null일 경우 발생합니다.</exception>");
-                AppendLine("/// <exception cref=\"global::System.ArgumentException\">인스턴스의 타입이 유효하지 않을 경우 발생합니다.</exception>");
-                AppendLine($"public static {bridgeTypeName} __GetInstanceFrom({getInstanceFromParamType} instance)");
-                StartBlock();
+                if (!targetIsStatic)
                 {
-                    AppendLine("if (instance == null) throw new global::System.ArgumentNullException(nameof(instance));");
-                    AppendLine("if (!__targetType.IsInstanceOfType(instance)) throw new global::System.ArgumentException(\"Invalid instance type\");");
+                    // __cached 및 __GetInstanceFrom
+                    // __cached의 키 타입은 항상 원래 타입
+                    AppendLine($"private static readonly global::System.Runtime.CompilerServices.ConditionalWeakTable<{targetTypeName}, __{bridgeName}> __cached = new();");
                     AppendLine();
-                    AppendLine($"{targetTypeName} castedInstance = ({targetTypeName})instance;");
-                    AppendLine($"if (!__cached.TryGetValue(castedInstance, out __{bridgeName}? bridgeInstance))");
+
+                    // __GetInstanceFrom의 매개변수 타입 설정
+                    string getInstanceFromParamType = targetPublicBaseType == null ? "object" : targetPublicBaseType.GetFullTypeName();
+
+                    AppendLine("/// <summary>");
+                    AppendLine("/// 타겟 타입의 인스턴스로 브릿지를 생성합니다.");
+                    AppendLine("/// </summary>");
+                    AppendLine("/// <exception cref=\"global::System.ArgumentNullException\">인스턴스가 null일 경우 발생합니다.</exception>");
+                    AppendLine("/// <exception cref=\"global::System.ArgumentException\">인스턴스의 타입이 유효하지 않을 경우 발생합니다.</exception>");
+                    AppendLine($"public static {bridgeTypeName} __GetInstanceFrom({getInstanceFromParamType} instance)");
                     StartBlock();
                     {
-                        AppendLine($"bridgeInstance = new __{bridgeName}(castedInstance);");
-                        AppendLine("__cached.Add(castedInstance, bridgeInstance);");
+                        AppendLine("if (instance == null) throw new global::System.ArgumentNullException(nameof(instance));");
+                        AppendLine("if (!__targetType.IsInstanceOfType(instance)) throw new global::System.ArgumentException(\"Invalid instance type\");");
+                        AppendLine();
+                        AppendLine($"{targetTypeName} castedInstance = ({targetTypeName})instance;");
+                        AppendLine($"if (!__cached.TryGetValue(castedInstance, out __{bridgeName}? bridgeInstance))");
+                        StartBlock();
+                        {
+                            AppendLine($"bridgeInstance = new __{bridgeName}(castedInstance);");
+                            AppendLine("__cached.Add(castedInstance, bridgeInstance);");
+                        }
+                        EndBlock();
+                        AppendLine();
+                        AppendLine("return bridgeInstance;");
                     }
                     EndBlock();
                     AppendLine();
-                    AppendLine("return bridgeInstance;");
-                }
-                EndBlock();
-                AppendLine();
 
-                // __instance 필드
-                AppendLine("/// <summary>");
-                AppendLine("/// 타겟 타입의 인스턴스입니다.");
-                AppendLine("/// </summary>");
-                AppendLine($"public {getInstanceFromParamType} __instance {{ get; }}"); // __instance 필드는 원래 타입
+                    // __instance 필드
+                    AppendLine("/// <summary>");
+                    AppendLine("/// 타겟 타입의 인스턴스입니다.");
+                    AppendLine("/// </summary>");
+                    AppendLine($"public {getInstanceFromParamType} __instance {{ get; }}"); // __instance 필드는 원래 타입
+                }
 
                 MemberBuilder.Build(builder, targetSymbol);
-                
-                // 비공개 구현 클래스
-                AppendLine("/// <summary>");
-                AppendLine("/// 브릿지 인터페이스의 내부 구현 클래스입니다.");
-                AppendLine("/// </summary>");
-                AppendLine($"private class __{bridgeName} : {bridgeTypeName}");
-                StartBlock();
+
+                if (!targetIsStatic)
                 {
-                    AppendLine($"public __{bridgeName}({targetTypeName} instance) => this.__instance = instance;"); // 생성자 매개변수는 원래 타입
-                    AppendLine($"public {targetTypeName} __instance {{ get; }}"); // __instance 필드는 원래 타입
-                    
-                    ClassBuilder.MemberBuilder.Build(builder, targetSymbol);
+                    // 비공개 구현 클래스
+                    AppendLine("/// <summary>");
+                    AppendLine("/// 브릿지 인터페이스의 내부 구현 클래스입니다.");
+                    AppendLine("/// </summary>");
+                    AppendLine($"private class __{bridgeName} : {bridgeTypeName}");
+                    StartBlock();
+                    {
+                        AppendLine($"public __{bridgeName}({targetTypeName} instance) => this.__instance = instance;"); // 생성자 매개변수는 원래 타입
+                        AppendLine($"public {targetTypeName} __instance {{ get; }}"); // __instance 필드는 원래 타입
+
+                        ClassBuilder.MemberBuilder.Build(builder, targetSymbol);
+                    }
+                    EndBlock();
                 }
-                EndBlock();
             }
         }
     }

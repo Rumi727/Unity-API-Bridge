@@ -1,12 +1,12 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
-        <Nullable>enable</Nullable>
-        <LangVersion>default</LangVersion>
         <TargetFramework>netstandard2.0</TargetFramework>
+        <LangVersion>default</LangVersion>
+        <Nullable>enable</Nullable>
         <IncludeBuildOutput>false</IncludeBuildOutput>
         <IsRoslynComponent>true</IsRoslynComponent>
-        <EnforceExtendedAnalyzerRules>true</EnforceExtendedAnalyzerRules>
+        <EnforceExtendedAnalyzerRules>false</EnforceExtendedAnalyzerRules>
     </PropertyGroup>
 
     <ItemGroup>
@@ -14,27 +14,27 @@
     </ItemGroup>
 
     <ItemGroup>
-      <Compile Update="BridgeGeneratorBuilder+MemberBuilder.cs">
-        <DependentUpon>BridgeGeneratorBuilder+ClassBuilder.cs</DependentUpon>
-      </Compile>
-      <Compile Update="BridgeGeneratorBuilder+ClassBuilder.cs">
-        <DependentUpon>BridgeGeneratorBuilder.cs</DependentUpon>
-      </Compile>
-      <Compile Update="BridgeGeneratorBuilder+InterfaceBuilder.cs">
-        <DependentUpon>BridgeGeneratorBuilder.cs</DependentUpon>
-      </Compile>
-      <Compile Update="BridgeGeneratorBuilder+ClassBuilder+MemberBuilder.cs">
-        <DependentUpon>BridgeGeneratorBuilder+ClassBuilder.cs</DependentUpon>
-      </Compile>
-      <Compile Update="BridgeGeneratorBuilder+InterfaceBuilder+MemberBuilder.cs">
-        <DependentUpon>BridgeGeneratorBuilder+InterfaceBuilder.cs</DependentUpon>
-      </Compile>
-      <Compile Update="BridgeGeneratorBuilder+EnumBuilder.cs">
-        <DependentUpon>BridgeGeneratorBuilder.cs</DependentUpon>
-      </Compile>
-      <Compile Update="BridgeGeneratorBuilder+StructBuilder.cs">
-        <DependentUpon>BridgeGeneratorBuilder.cs</DependentUpon>
-      </Compile>
+        <Compile Update="BridgeGeneratorBuilder+MemberBuilder.cs">
+            <DependentUpon>BridgeGeneratorBuilder+ClassBuilder.cs</DependentUpon>
+        </Compile>
+        <Compile Update="BridgeGeneratorBuilder+ClassBuilder.cs">
+            <DependentUpon>BridgeGeneratorBuilder.cs</DependentUpon>
+        </Compile>
+        <Compile Update="BridgeGeneratorBuilder+InterfaceBuilder.cs">
+            <DependentUpon>BridgeGeneratorBuilder.cs</DependentUpon>
+        </Compile>
+        <Compile Update="BridgeGeneratorBuilder+ClassBuilder+MemberBuilder.cs">
+            <DependentUpon>BridgeGeneratorBuilder+ClassBuilder.cs</DependentUpon>
+        </Compile>
+        <Compile Update="BridgeGeneratorBuilder+InterfaceBuilder+MemberBuilder.cs">
+            <DependentUpon>BridgeGeneratorBuilder+InterfaceBuilder.cs</DependentUpon>
+        </Compile>
+        <Compile Update="BridgeGeneratorBuilder+EnumBuilder.cs">
+            <DependentUpon>BridgeGeneratorBuilder.cs</DependentUpon>
+        </Compile>
+        <Compile Update="BridgeGeneratorBuilder+StructBuilder.cs">
+            <DependentUpon>BridgeGeneratorBuilder.cs</DependentUpon>
+        </Compile>
     </ItemGroup>
 
 </Project>
