@@ -281,6 +281,33 @@ namespace RuniOS.APIBridge
                                     Append("static ");
                                 if (method.IsUnsafe())
                                     Append("unsafe ");
+
+                                if (!isStaticMember)
+                                {
+                                    switch (memberName)
+                                    {
+                                        case "ToString":
+                                        case "Equals":
+                                        case "GetHashCode":
+                                            Append("override ");
+                                            break;
+                                        case "GetType":
+                                        case "MemberwiseClone":
+                                            Append("new ");
+                                            break;
+                                    }
+                                }
+                                else
+                                {
+                                    switch (memberName)
+                                    {
+                                        case "Equals":
+                                        case "ReferenceEquals":
+                                            Append("new ");
+                                            break;
+                                    }
+                                }
+                                
                                 Append($"{returnType} {memberName}{method.GetTypeParametersText()}({parameters})");
                                 {
                                     string constraintsText = method.GetConstraintsText();
