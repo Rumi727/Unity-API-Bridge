@@ -50,7 +50,7 @@ namespace RuniOS.APIBridge
                         /// </para>
                         /// </remarks>
                         [AttributeUsage(AttributeTargets.Assembly, AllowMultiple = true)]
-                        internal sealed partial class GenerateAPIBridgeForAssemblyAttribute(params string[] targetAssemblies) : Attribute
+                        internal sealed class GenerateAPIBridgeForAssemblyAttribute(params string[] targetAssemblies) : Attribute
                         {
                             /// <summary>
                             /// 브릿지 코드를 생성할 대상 어셈블리들입니다.
@@ -77,7 +77,7 @@ namespace RuniOS.APIBridge
                         /// 해당 어트리뷰트에 명시된 어셈블리에 속한 타입에 대해서만 유효합니다.
                         /// </remarks>
                         [AttributeUsage(AttributeTargets.Assembly, AllowMultiple = true)]
-                        internal sealed partial class GenerateAPIBridgeForTypeAttribute(params Type[] types) : Attribute
+                        internal sealed class GenerateAPIBridgeForTypeAttribute(params Type[] types) : Attribute
                         {
                             /// <summary>
                             /// 브릿지 코드를 생성할 대상 타입들입니다.

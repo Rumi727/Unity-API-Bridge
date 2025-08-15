@@ -187,10 +187,15 @@ namespace RuniOS.APIBridge
         /// <returns>생성된 브릿지 네임스페이스 문자열입니다.</returns>
         public static string GetBridgeNamespace(this INamedTypeSymbol symbol)
         {
-            if (symbol.ContainingNamespace == null || string.IsNullOrEmpty(symbol.ContainingNamespace.Name))
-                return "RuniOS.APIBridge";
-            else
-                return $"RuniOS.APIBridge.{symbol.ContainingNamespace.Name}";
+            INamespaceSymbol? namespaceSymbol = symbol.ContainingNamespace;
+            string result = string.Empty;
+            while (namespaceSymbol != null && !string.IsNullOrEmpty(namespaceSymbol.Name))
+            {
+                result = $".{namespaceSymbol.Name}{result}";
+                namespaceSymbol = namespaceSymbol.ContainingNamespace;
+            }
+            
+            return "RuniOS.APIBridge" + result;
         }
 
         /// <summary>
