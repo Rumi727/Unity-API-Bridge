@@ -114,7 +114,7 @@ namespace RuniOS.APIBridge
                     AppendLine("/// </summary>");
                     if (containingType.IsObsolete(out string message) && SymbolEqualityComparer.Default.Equals(containingType, containingTypes.Last()))
                         AppendLine($"[System.ObsoleteAttribute({message})]");
-                    AppendLine(containingType.GetTypeDeclarationText(forceStatic));
+                    AppendLine(containingType.GetTypeDeclarationText(forceStatic, !SymbolEqualityComparer.Default.Equals(containingType, targetSymbol)));
                     StartBlock();
                 }
 

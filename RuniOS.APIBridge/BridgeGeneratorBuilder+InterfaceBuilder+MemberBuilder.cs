@@ -34,13 +34,14 @@ namespace RuniOS.APIBridge
                 public void Build()
                 {
                     BridgeGeneratorBuilder? builder = this.builder;
-                    bool targetIsNonPublic = this.targetIsNonPublic;
                     var members = targetSymbol.GetMembers()
                         .Where(static x => x is IFieldSymbol or IPropertySymbol or IEventSymbol or IMethodSymbol)
-                        .Where(x => targetIsNonPublic || x.IsNonPublicMember())
+                        .Where(static x => !x.IsStatic)
+                        .Where(static x => !x.IsImplicitlyDeclared)
+                        .Where(static x => x.IsNonPublicMember())
                         .Where(static x => !x.IsInternalCall())
                         .Where(static x => !x.IsExplicitInterfaceImplementations())
-                        .Where(static x => !x.IsStatic)
+                        .Where(static x => !x.IsCompilerGenerated())
                         .Where(x => !builder.includeMembers.Any() || builder.includeMembers.Contains(x.Name))
                         .Where(x => !builder.excludeMembers.Contains(x.Name));
                     if (members.Any())
@@ -72,7 +73,7 @@ namespace RuniOS.APIBridge
                                     if (namedTypeSymbol.IsNonPublicMember())
                                     {
                                         fieldTypeIsNonPublic = true;
-                                        builder.nonPublicTypeSymbols.Add(new BridgeGenerationData(builder.targetAssemblies, namedTypeSymbol.OriginalDefinition, [string.Empty], ImmutableArray<string>.Empty, false, false));
+                                        builder.nonPublicTypeSymbols.Add(new BridgeGenerationData(builder.targetAssemblies, namedTypeSymbol.OriginalDefinition, ImmutableArray<string>.Empty, ImmutableArray<string>.Empty, false, false));
                                     }
                                 }
 
@@ -104,7 +105,7 @@ namespace RuniOS.APIBridge
                                     if (namedTypeSymbol.IsNonPublicMember())
                                     {
                                         propertyTypeIsNonPublic = true;
-                                        builder.nonPublicTypeSymbols.Add(new BridgeGenerationData(builder.targetAssemblies, namedTypeSymbol.OriginalDefinition, [string.Empty], ImmutableArray<string>.Empty, false, false));
+                                        builder.nonPublicTypeSymbols.Add(new BridgeGenerationData(builder.targetAssemblies, namedTypeSymbol.OriginalDefinition, ImmutableArray<string>.Empty, ImmutableArray<string>.Empty, false, false));
                                     }
                                 }
 
@@ -151,7 +152,7 @@ namespace RuniOS.APIBridge
 
                                         if (namedReturnType.IsNonPublicMember())
                                         {
-                                            builder.nonPublicTypeSymbols.Add(new BridgeGenerationData(builder.targetAssemblies, namedReturnType.OriginalDefinition, [string.Empty], ImmutableArray<string>.Empty, false, false));
+                                            builder.nonPublicTypeSymbols.Add(new BridgeGenerationData(builder.targetAssemblies, namedReturnType.OriginalDefinition, ImmutableArray<string>.Empty, ImmutableArray<string>.Empty, false, false));
                                             returnTypeIsNonPublic = true;
                                         }
                                     }
@@ -161,7 +162,7 @@ namespace RuniOS.APIBridge
                                     .Select(static x => x.Type.GetNamedTypeSymbol())
                                     .OfType<INamedTypeSymbol>()
                                     .Where(static x => x.IsNonPublicMember())
-                                    .Select(x => new BridgeGenerationData(builder.targetAssemblies, x.OriginalDefinition, [string.Empty], ImmutableArray<string>.Empty, false, false)));
+                                    .Select(x => new BridgeGenerationData(builder.targetAssemblies, x.OriginalDefinition, ImmutableArray<string>.Empty, ImmutableArray<string>.Empty, false, false)));
 
                                 if (returnTypeIsDelegate && returnTypeIsNonPublic)
                                     StartComment();

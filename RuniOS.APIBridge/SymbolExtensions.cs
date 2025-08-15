@@ -11,7 +11,8 @@ namespace RuniOS.APIBridge
         public static readonly SymbolDisplayFormat fullyQualifiedFormatNoGenerics = new SymbolDisplayFormat(
             globalNamespaceStyle: SymbolDisplayGlobalNamespaceStyle.Included,
             typeQualificationStyle: SymbolDisplayTypeQualificationStyle.NameAndContainingTypesAndNamespaces,
-            genericsOptions: SymbolDisplayGenericsOptions.None
+            genericsOptions: SymbolDisplayGenericsOptions.None,
+            miscellaneousOptions: SymbolDisplayMiscellaneousOptions.EscapeKeywordIdentifiers | SymbolDisplayMiscellaneousOptions.UseSpecialTypes
         );
         
         /// <summary>
@@ -36,6 +37,8 @@ namespace RuniOS.APIBridge
                     
                     break;
                 }
+                case IPropertySymbol propertySymbol:
+                    return (propertySymbol.GetMethod?.IsNonPublicMember(checkElementType) ?? false) || (propertySymbol.SetMethod?.IsNonPublicMember(checkElementType) ?? false);
             }
 
             if (symbol.DeclaredAccessibility != Accessibility.Public)
@@ -52,26 +55,23 @@ namespace RuniOS.APIBridge
                 {
                     if (arg.Type?.GetFullTypeName() == "global::System.Reflection.MethodAttributes")
                     {
-                        if (arg.Value is int enumValue)
-                            return (enumValue & (int)MethodAttributes.MemberAccessMask) != (int)MethodAttributes.Public;
+                        if (arg.Value is int enumValue && (enumValue & (int)MethodAttributes.MemberAccessMask) != (int)MethodAttributes.Public)
+                            return true;
                     }
                     else if (arg.Type?.GetFullTypeName() == "global::System.Reflection.FieldAttributes")
                     {
-                        if (arg.Value is int enumValue)
-                            return (enumValue & (int)FieldAttributes.FieldAccessMask) != (int)FieldAttributes.Public;
+                        if (arg.Value is int enumValue && (enumValue & (int)FieldAttributes.FieldAccessMask) != (int)FieldAttributes.Public)
+                            return true;
                     }
                     else if (arg.Type?.GetFullTypeName() == "global::System.Reflection.TypeAttributes")
                     {
-                        if (arg.Value is int enumValue)
-                            return (enumValue & (int)TypeAttributes.VisibilityMask) != (int)TypeAttributes.Public;
+                        if (arg.Value is int enumValue && (enumValue & (int)TypeAttributes.VisibilityMask) != (int)TypeAttributes.Public)
+                            return true;
                     }
                 }
             }
-
-            if (symbol is IPropertySymbol propertySymbol)
-                return (propertySymbol.GetMethod?.IsNonPublicMember(checkElementType) ?? false) || (propertySymbol.SetMethod?.IsNonPublicMember(checkElementType) ?? false);
             
-            return false; // 어트리뷰트가 없거나 비공개를 나타내지 않음
+            return symbol.ContainingType?.IsNonPublicMember(checkElementType) ?? false; // 어트리뷰트가 없거나 비공개를 나타내지 않음
         }
         
         /// <summary>
@@ -163,6 +163,14 @@ namespace RuniOS.APIBridge
 
             elementTypeSymbol = null;
             return false;
+        }
+
+        public static bool IsCompilerGenerated(this ISymbol symbol)
+        {
+            if (symbol is IFieldSymbol fieldSymbol && fieldSymbol.AssociatedSymbol != null)
+                return true;
+
+            return symbol.GetAttributes().Any(static x => x.AttributeClass?.GetFullTypeName() == "global::System.Runtime.CompilerServices.CompilerGeneratedAttribute");
         }
 
         public static string EnumerableToList(this ITypeSymbol symbol, string enumerableText)
@@ -354,31 +362,41 @@ namespace RuniOS.APIBridge
             _ => string.Empty
         };
 
-        public static string GetTypeDeclarationText(this INamedTypeSymbol symbol, bool forceStatic)
+        public static string GetTypeDeclarationText(this INamedTypeSymbol symbol, bool forceStatic, bool partial)
         {
             string result = "public ";
-            if (symbol.TypeKind == TypeKind.Class)
+            switch (symbol.TypeKind)
             {
-                if (symbol.IsStatic || forceStatic)
-                    result += "static ";
-                if (symbol.IsSealed)
-                    result += "sealed ";
-            }
-            else if (symbol.TypeKind == TypeKind.Struct)
-            {
-                result += "readonly ";
-                if (symbol.IsRefLikeType)
-                    result += "ref ";
+                case TypeKind.Class:
+                {
+                    if (partial)
+                        break;
+                    
+                    if (symbol.IsStatic || forceStatic)
+                        result += "static ";
+                    if (symbol.IsSealed && !forceStatic)
+                        result += "sealed ";
+                    break;
+                }
+                case TypeKind.Struct:
+                {
+                    if (partial)
+                        break;
+                    
+                    if (symbol.IsRefLikeType)
+                        result += "ref ";
+                    break;
+                }
             }
 
-            if (symbol.IsUnsafe())
+            if (!partial && symbol.IsUnsafe())
                 result += "unsafe ";
             
             if (symbol.TypeKind != TypeKind.Enum)
                 result += "partial ";
             
             result += $"{symbol.GetTypeDeclarationKindName()} {symbol.GetBridgeTypeName()}{symbol.GetTypeParametersText()}";
-            if (symbol.EnumUnderlyingType != null)
+            if (!partial && symbol.EnumUnderlyingType != null)
             {
                 string enumUnderlyingTypeName = symbol.EnumUnderlyingType.GetFullTypeName();
                 if (enumUnderlyingTypeName != "int")

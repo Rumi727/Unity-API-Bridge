@@ -71,10 +71,10 @@ namespace RuniOS.APIBridge
                     AppendLine($"public static {bridgeTypeName} __GetInstanceFrom({getInstanceFromParamType} instance)");
                     StartBlock();
                     {
-                        if (targetSymbol.IsNullable())
+                        if (getInstanceFromParamType == "object" || targetSymbol.IsNullable())
                             AppendLine("if (instance == null) throw new global::System.ArgumentNullException(nameof(instance));");
                         AppendLine("if (!__targetType.IsInstanceOfType(instance)) throw new global::System.ArgumentException(\"Invalid instance type\");");
-                        if (targetSymbol.IsNullable())
+                        if (getInstanceFromParamType == "object" || targetSymbol.IsNullable())
                             AppendLine();
                         AppendLine($"return new {bridgeTypeName}(({targetTypeName})instance);");
                     }
@@ -87,7 +87,7 @@ namespace RuniOS.APIBridge
                     AppendLine("/// <summary>");
                     AppendLine("/// 타겟 타입의 인스턴스입니다.");
                     AppendLine("/// </summary>");
-                    AppendLine($"public {(targetIsNonPublic ? "object" : targetTypeName)} __instance {{ get; }}"); // __instance 필드는 원래 타입
+                    AppendLine($"public {(targetIsNonPublic ? "object" : targetTypeName)} __instance {{ get; private set; }}"); // __instance 필드는 원래 타입
                 }
 
                 ClassBuilder.MemberBuilder.Build(builder, targetSymbol);

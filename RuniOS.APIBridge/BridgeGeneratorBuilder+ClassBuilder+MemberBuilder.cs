@@ -48,9 +48,11 @@ namespace RuniOS.APIBridge
                     bool forceInstance = target == Target.InstanceMember;
                     var members = targetSymbol.GetMembers()
                         .Where(static x => x is IFieldSymbol or IPropertySymbol or IEventSymbol or IMethodSymbol)
-                        .Where(x => targetIsNonPublic || x.IsNonPublicMember())
+                        .Where(static x => !x.IsImplicitlyDeclared)
+                        .Where(static x => x.IsNonPublicMember())
                         .Where(static x => !x.IsInternalCall())
                         .Where(static x => !x.IsExplicitInterfaceImplementations())
+                        .Where(static x => !x.IsCompilerGenerated())
                         .Where(x => !forceStatic || (x.IsStatic && forceStatic))
                         .Where(x => !forceInstance || (!x.IsStatic && forceInstance))
                         .Where(x => !builder.includeMembers.Any() || builder.includeMembers.Contains(x.Name))
@@ -92,7 +94,7 @@ namespace RuniOS.APIBridge
                                     if (namedTypeSymbol.IsNonPublicMember())
                                     {
                                         fieldTypeIsNonPublic = true;
-                                        builder.nonPublicTypeSymbols.Add(new BridgeGenerationData(builder.targetAssemblies, namedTypeSymbol.OriginalDefinition, [string.Empty], ImmutableArray<string>.Empty, false, false));
+                                        builder.nonPublicTypeSymbols.Add(new BridgeGenerationData(builder.targetAssemblies, namedTypeSymbol.OriginalDefinition, ImmutableArray<string>.Empty, ImmutableArray<string>.Empty, false, false));
                                     }
                                 }
 
@@ -116,40 +118,26 @@ namespace RuniOS.APIBridge
                                     Append($"{fieldTypeName} {memberName}");
 
                                     if (field.IsReadOnly)
-                                    {
-                                        if (fieldTypeIsNonPublic && field.Type.TypeKind != TypeKind.Enum)
-                                            AppendLine($" => {namedTypeSymbol!.GetBridgeTypeFullName()}.__GetInstanceFrom({instanceAccessPrefix}.{memberName});");
-                                        else
-                                        {
-                                            if (field.Type.TypeKind == TypeKind.Enum)
-                                                AppendLine($" => ({fieldTypeName})({((INamedTypeSymbol)field.Type).EnumUnderlyingType?.GetFullTypeName()}){instanceAccessPrefix}.{memberName};");
-                                            else
-                                                AppendLine($" => {instanceAccessPrefix}.{memberName};");
-                                        }
-                                    }
+                                        AppendLine($" => {field.Type.ValueAccessToBridgeAccess($"{instanceAccessPrefix}.{memberName}")};");
                                     else
                                     {
                                         AppendLine();
                                         StartBlock();
                                         {
-                                            if (fieldTypeIsNonPublic && field.Type.TypeKind != TypeKind.Enum)
+                                            AppendLine($"get => {field.Type.ValueAccessToBridgeAccess($"{instanceAccessPrefix}.{memberName}")};");
+                                            if (targetSymbol.IsValueType)
                                             {
-                                                AppendLine($"get => {namedTypeSymbol!.GetBridgeTypeFullName()}.__GetInstanceFrom({instanceAccessPrefix}.{memberName});");
-                                                AppendLine($"set => {instanceAccessPrefix}.{memberName} = ({field.Type.GetFullTypeName()})value.__instance;");
+                                                AppendLine("set");
+                                                StartBlock();
+                                                {
+                                                    AppendLine($"{targetTypeName} instance = {instanceAccessPrefix};");
+                                                    AppendLine($"instance.{memberName} = {field.Type.BridgeAccessToValueAccess("value")};");
+                                                    AppendLine("__instance = instance;");
+                                                }
+                                                EndBlock();
                                             }
                                             else
-                                            {
-                                                if (field.Type.TypeKind == TypeKind.Enum)
-                                                {
-                                                    AppendLine($"get => ({fieldTypeName})({namedTypeSymbol?.EnumUnderlyingType?.GetFullTypeName()}){instanceAccessPrefix}.{memberName};");
-                                                    AppendLine($"set => {instanceAccessPrefix}.{memberName} = ({field.Type.GetFullTypeName()})({namedTypeSymbol?.EnumUnderlyingType?.GetFullTypeName()})value;");
-                                                }
-                                                else
-                                                {
-                                                    AppendLine($"get => {instanceAccessPrefix}.{memberName};");
-                                                    AppendLine($"set => {instanceAccessPrefix}.{memberName} = value;");
-                                                }
-                                            }
+                                                AppendLine($"set => {instanceAccessPrefix}.{memberName} = {field.Type.BridgeAccessToValueAccess("value")};");
                                         }
                                         EndBlock();
                                     }
@@ -178,7 +166,7 @@ namespace RuniOS.APIBridge
                                     if (namedTypeSymbol.IsNonPublicMember())
                                     {
                                         propertyTypeIsNonPublic = true;
-                                        builder.nonPublicTypeSymbols.Add(new BridgeGenerationData(builder.targetAssemblies, namedTypeSymbol.OriginalDefinition, [string.Empty], ImmutableArray<string>.Empty, false, false));
+                                        builder.nonPublicTypeSymbols.Add(new BridgeGenerationData(builder.targetAssemblies, namedTypeSymbol.OriginalDefinition, ImmutableArray<string>.Empty, ImmutableArray<string>.Empty, false, false));
                                     }
                                 }
 
@@ -203,7 +191,21 @@ namespace RuniOS.APIBridge
                                     if (property.GetMethod != null)
                                         AppendLine($"get => {property.Type.ValueAccessToBridgeAccess($"{instanceAccessPrefix}.{memberName}")};");
                                     if (property.SetMethod != null)
-                                        AppendLine($"set => {instanceAccessPrefix}.{memberName} = {property.Type.BridgeAccessToValueAccess("value")};");
+                                    {
+                                        if (targetSymbol.IsValueType)
+                                        {
+                                            AppendLine("set");
+                                            StartBlock();
+                                            {
+                                                AppendLine($"{targetTypeName} instance = {instanceAccessPrefix};");
+                                                AppendLine($"instance.{memberName} = {property.Type.BridgeAccessToValueAccess("value")};");
+                                                AppendLine("__instance = instance;");
+                                            }
+                                            EndBlock();
+                                        }
+                                        else
+                                            AppendLine($"set => {instanceAccessPrefix}.{memberName} = {property.Type.BridgeAccessToValueAccess("value")};");
+                                    }
 
                                     EndBlock();
                                 }
@@ -259,7 +261,7 @@ namespace RuniOS.APIBridge
 
                                         if (namedReturnType.IsNonPublicMember())
                                         {
-                                            builder.nonPublicTypeSymbols.Add(new BridgeGenerationData(builder.targetAssemblies, namedReturnType.OriginalDefinition, [string.Empty], ImmutableArray<string>.Empty, false, false));
+                                            builder.nonPublicTypeSymbols.Add(new BridgeGenerationData(builder.targetAssemblies, namedReturnType.OriginalDefinition, ImmutableArray<string>.Empty, ImmutableArray<string>.Empty, false, false));
                                             returnTypeIsNonPublic = true;
                                         }
                                     }
@@ -269,7 +271,7 @@ namespace RuniOS.APIBridge
                                     .Select(static x => x.Type.GetNamedTypeSymbol())
                                     .OfType<INamedTypeSymbol>()
                                     .Where(static x => x.IsNonPublicMember())
-                                    .Select(x => new BridgeGenerationData(builder.targetAssemblies, x.OriginalDefinition, [string.Empty], ImmutableArray<string>.Empty, false, false)));
+                                    .Select(x => new BridgeGenerationData(builder.targetAssemblies, x.OriginalDefinition, ImmutableArray<string>.Empty, ImmutableArray<string>.Empty, false, false)));
 
                                 if (returnTypeIsDelegate && returnTypeIsNonPublic)
                                     StartComment();
