@@ -359,6 +359,9 @@ namespace RuniOS.APIBridge
                                     EndBlock();
                                 }
                                 
+                                if (returnTypeIsDelegate && returnTypeIsNonPublic)
+                                    EndComment();
+                                
                                 break;
 
                                 string GetMethodCallText() => method.ReturnType.ValueAccessToBridgeAccess($"{instanceAccessPrefix}.{memberName}{method.GetTypeArgumentsText()}({callParameters})");

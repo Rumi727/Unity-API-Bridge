@@ -74,7 +74,7 @@ namespace RuniOS.APIBridge
         
         void StartComment() => AppendLine("/*");
 
-        void EndComment() => AppendLine("/*");
+        void EndComment() => AppendLine("*/");
 
         void AppendLineDocumentation(ISymbol symbol)
         {

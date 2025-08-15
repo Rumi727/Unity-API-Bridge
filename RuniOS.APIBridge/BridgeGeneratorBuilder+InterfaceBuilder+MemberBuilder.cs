@@ -171,6 +171,9 @@ namespace RuniOS.APIBridge
                                 if (method.IsUnsafe())
                                     Append("unsafe ");
                                 Append($"{returnType} {memberName}{method.GetTypeArgumentsText()}({parameters}) {method.GetConstraintsText()};");
+                                
+                                if (returnTypeIsDelegate && returnTypeIsNonPublic)
+                                    EndComment();
 
                                 break;
                             }
