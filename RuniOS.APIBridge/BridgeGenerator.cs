@@ -2,8 +2,6 @@ using System.Linq;
 using System.Collections.Immutable;
 using Microsoft.CodeAnalysis;
 using System.Collections.Generic;
-using System.Diagnostics;
-using System.IO;
 
 namespace RuniOS.APIBridge
 {
@@ -110,7 +108,7 @@ namespace RuniOS.APIBridge
                     }
                     """);
             });
-
+            
             // 1. 어셈블리 수준의 GenerateAPIBridgeFor 어트리뷰트를 모두 찾아 모든 타입 인자를 추출합니다.
             var targetTypesProvider = context.CompilationProvider
                 .SelectMany(static (compilation, _) =>
@@ -119,16 +117,18 @@ namespace RuniOS.APIBridge
                     var assemblyAttributes = compilation.Assembly.GetAttributes();
 
                     // GenerateAPIBridgeForAssemblyAttribute 파싱
-                    var targetAssemblies = assemblyAttributes
-                        .Where(static ad => ad.AttributeClass?.ToDisplayString() == "RuniOS.APIBridge.GenerateAPIBridgeForAssemblyAttribute")
+                    ImmutableArray<string> targetAssemblies = assemblyAttributes
+                        .Where(static ad => ad.AttributeClass?.GetFullTypeName() == "global::RuniOS.APIBridge.GenerateAPIBridgeForAssemblyAttribute")
                         .SelectMany(static ad => ad.ConstructorArguments.Where(static ca => ca.Kind == TypedConstantKind.Array))
                         .SelectMany(static ca => ca.Values.Select(static v => (string?)v.Value))
                         .Where(static s => !string.IsNullOrEmpty(s))
+                        .OfType<string>()
                         .Distinct()
+                        // ReSharper disable once UseCollectionExpression
                         .ToImmutableArray();
 
                     // GenerateAPIBridgeFor(params Type[] types) 처리
-                    foreach (var attributeData in assemblyAttributes.Where(static ad => ad.AttributeClass?.ToDisplayString() == "RuniOS.APIBridge.GenerateAPIBridgeForTypeAttribute"))
+                    foreach (var attributeData in assemblyAttributes.Where(static ad => ad.AttributeClass?.GetFullTypeName() == "global::RuniOS.APIBridge.GenerateAPIBridgeForTypeAttribute"))
                     {
                         // 명명된 인자(includeMember, excludeMember)를 추출합니다.
                         ImmutableArray<string> includeMembers = ImmutableArray<string>.Empty;
@@ -182,9 +182,7 @@ namespace RuniOS.APIBridge
                                 if (typeValue.Value is not INamedTypeSymbol typeSymbol)
                                     continue;
                                 
-                                // targetAssemblies가 지정되었으면 해당 어셈블리에 속하는 타입만 추가
-                                if (!targetAssemblies.Any() || targetAssemblies.Contains(typeSymbol.ContainingAssembly?.Name))
-                                    generationDataList.Add(new BridgeGenerationData(typeSymbol, includeMembers, excludeMembers, forceStatic, skipCreateInstance));
+                                generationDataList.Add(new BridgeGenerationData(targetAssemblies, typeSymbol.OriginalDefinition, includeMembers, excludeMembers, forceStatic, skipCreateInstance));
                             }
                         }
                     }
@@ -197,30 +195,35 @@ namespace RuniOS.APIBridge
             {
                 // 중복 제거를 위해 GroupBy와 First를 사용하여 DistinctBy와 동일한 기능을 구현합니다.
                 IEnumerable<BridgeGenerationData> distinctTargets = targetDatas
-                    .GroupBy(static x => x.targetSymbol, SymbolEqualityComparer.Default)
+                    .GroupBy(static x => x.targetSymbol.OriginalDefinition, SymbolEqualityComparer.Default)
                     .Select(static x => x.First());
 
                 if (!distinctTargets.Any())
                     return;
                 
                 List<INamedTypeSymbol> bridgedNonPublicTypeSymbols = [];
-                List<INamedTypeSymbol> nonPublicTypeSymbols = [];
+                List<BridgeGenerationData> nonPublicTypeSymbols = [];
                 
                 foreach (var targetData in distinctTargets)
                     Build(targetData);
                 
-                nonPublicTypeSymbols = nonPublicTypeSymbols.Select(static x => x.OriginalDefinition).Except<INamedTypeSymbol>(bridgedNonPublicTypeSymbols, SymbolEqualityComparer.Default).ToList();
-
+                nonPublicTypeSymbols = nonPublicTypeSymbols
+                    .Where(x => !bridgedNonPublicTypeSymbols.Contains(x.targetSymbol.OriginalDefinition, SymbolEqualityComparer.Default))
+                    .GroupBy(static x => x.targetSymbol.OriginalDefinition, SymbolEqualityComparer.Default)
+                    .Select(static x => x.First())
+                    .ToList();
+                
                 {
                     while (nonPublicTypeSymbols.Any())
                     {
-                        foreach (INamedTypeSymbol? targetSymbol in nonPublicTypeSymbols.ToArray())
-                        {
-                            // include/exclude 멤버 정보가 없는 BridgeGenerationData를 생성하여 전달
-                            Build(new BridgeGenerationData(targetSymbol, ImmutableArray<string>.Empty, ImmutableArray<string>.Empty, false, false));
-                        }
+                        foreach (BridgeGenerationData data in nonPublicTypeSymbols.ToArray())
+                            Build(data);
                         
-                        nonPublicTypeSymbols = nonPublicTypeSymbols.Select(static x => x.OriginalDefinition).Except<INamedTypeSymbol>(bridgedNonPublicTypeSymbols, SymbolEqualityComparer.Default).ToList();
+                        nonPublicTypeSymbols = nonPublicTypeSymbols
+                            .Where(x => !bridgedNonPublicTypeSymbols.Contains(x.targetSymbol.OriginalDefinition, SymbolEqualityComparer.Default))
+                            .GroupBy(static x => x.targetSymbol.OriginalDefinition, SymbolEqualityComparer.Default)
+                            .Select(static x => x.First())
+                            .ToList();
                     }
                 }
                 
@@ -236,10 +239,14 @@ namespace RuniOS.APIBridge
                     
                     bridgedNonPublicTypeSymbols.Add(targetSymbol.OriginalDefinition);
                     
+                    // targetAssemblies가 지정되었으면 해당 어셈블리에 속하는 타입만 추가
+                    if (targetData.targetAssemblies.Any() && !targetData.targetAssemblies.Contains(targetSymbol.ContainingAssembly?.Name ?? string.Empty))
+                        return;
+                    
                     string fileName = $"{targetSymbol.GetBridgeNamespace()}.{GetBridgeTypeNameIncludeContaining(targetSymbol)}";
                     fileName += ".g.cs";
 
-                    spc.AddSource(fileName, BridgeGeneratorBuilder.Build(targetSymbol, includeMembers, excludeMembers, forceStatic, skipCreateInstance, out IReadOnlyList<INamedTypeSymbol> result));
+                    spc.AddSource(fileName, BridgeGeneratorBuilder.Build(targetData.targetAssemblies, targetSymbol, includeMembers, excludeMembers, forceStatic, skipCreateInstance, out IReadOnlyList<BridgeGenerationData> result));
                     nonPublicTypeSymbols.AddRange(result);
                     return;
 

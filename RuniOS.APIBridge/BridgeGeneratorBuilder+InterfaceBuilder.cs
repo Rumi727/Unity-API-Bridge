@@ -30,6 +30,9 @@ namespace RuniOS.APIBridge
                 AppendLine("/// </summary>");
                 AppendLine($"public static global::System.Type __targetType {{ get; }} = typeof({targetTypeName});"); // typeof는 항상 원래 타입을 사용
                 AppendLine();
+                
+                // __GetInstanceFrom의 매개변수 타입 설정
+                string getInstanceFromParamType = targetPublicBaseType == null ? "object" : targetPublicBaseType.GetFullTypeName();
 
                 if (!targetIsStatic)
                 {
@@ -37,9 +40,6 @@ namespace RuniOS.APIBridge
                     // __cached의 키 타입은 항상 원래 타입
                     AppendLine($"private static readonly global::System.Runtime.CompilerServices.ConditionalWeakTable<{targetTypeName}, __{bridgeName}> __cached = new();");
                     AppendLine();
-
-                    // __GetInstanceFrom의 매개변수 타입 설정
-                    string getInstanceFromParamType = targetPublicBaseType == null ? "object" : targetPublicBaseType.GetFullTypeName();
 
                     AppendLine("/// <summary>");
                     AppendLine("/// 타겟 타입의 인스턴스로 브릿지를 생성합니다.");
@@ -71,12 +71,18 @@ namespace RuniOS.APIBridge
                     AppendLine("/// 타겟 타입의 인스턴스입니다.");
                     AppendLine("/// </summary>");
                     AppendLine($"public {getInstanceFromParamType} __instance {{ get; }}"); // __instance 필드는 원래 타입
+                    
+                    MemberBuilder.Build(builder, targetSymbol);
                 }
-
-                MemberBuilder.Build(builder, targetSymbol);
+                
+                ClassBuilder.MemberBuilder.Build(builder, targetSymbol, ClassBuilder.MemberBuilder.Target.StaticMember);
 
                 if (!targetIsStatic)
                 {
+                    AppendLine();
+                    AppendLine();
+                    AppendLine();
+                    
                     // 비공개 구현 클래스
                     AppendLine("/// <summary>");
                     AppendLine("/// 브릿지 인터페이스의 내부 구현 클래스입니다.");
@@ -85,9 +91,9 @@ namespace RuniOS.APIBridge
                     StartBlock();
                     {
                         AppendLine($"public __{bridgeName}({targetTypeName} instance) => this.__instance = instance;"); // 생성자 매개변수는 원래 타입
-                        AppendLine($"public {targetTypeName} __instance {{ get; }}"); // __instance 필드는 원래 타입
+                        AppendLine($"public {getInstanceFromParamType} __instance {{ get; }}"); // __instance 필드는 원래 타입
 
-                        ClassBuilder.MemberBuilder.Build(builder, targetSymbol);
+                        ClassBuilder.MemberBuilder.Build(builder, targetSymbol, ClassBuilder.MemberBuilder.Target.InstanceMember);
                     }
                     EndBlock();
                 }

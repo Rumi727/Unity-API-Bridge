@@ -5,6 +5,7 @@ namespace RuniOS.APIBridge
 {
     public record struct BridgeGenerationData
     (
+        ImmutableArray<string> targetAssemblies,
         INamedTypeSymbol targetSymbol,
         ImmutableArray<string> includeMembers,
         ImmutableArray<string> excludeMembers,

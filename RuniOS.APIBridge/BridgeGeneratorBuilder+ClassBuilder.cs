@@ -1,4 +1,6 @@
 ﻿using Microsoft.CodeAnalysis;
+using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Linq;
 using System.Runtime.InteropServices;
 
@@ -38,11 +40,18 @@ namespace RuniOS.APIBridge
                 {
                     if (!targetIsAbstract && !builder.skipCreateInstance) // 정적/추상 클래스는 인스턴스 생성 불가
                     {
-                        foreach (var ctor in targetSymbol.Constructors.Where(static x => !x.IsImplicitlyDeclared)) // 암시적 생성자 제외
+                        string?[] ctorParameters = new string[targetSymbol.Constructors.Length];
+                        for (int i = 0; i < targetSymbol.Constructors.Length; i++)
                         {
-                            var parameters = string.Join(", ", ctor.Parameters.GetParameterText());
-                            var callParameters = string.Join(", ", ctor.Parameters.GetCallParameterText());
+                            IMethodSymbol ctor = targetSymbol.Constructors[i];
+                            string parameters = string.Join(", ", ctor.Parameters.GetParameterText());
+                            string callParameters = string.Join(", ", ctor.Parameters.GetCallParameterText());
                             bool isNonPublic = ctor.IsNonPublicMember();
+
+                            if (ctorParameters.Contains(parameters))
+                                continue;
+
+                            ctorParameters[i] = parameters;
 
                             if (isNonPublic || targetIsNonPublic)
                             {
@@ -55,9 +64,16 @@ namespace RuniOS.APIBridge
                                 AppendLine($"public static {bridgeTypeName} __CreateInstanceNonPublic({parameters}) => new {bridgeTypeName}(new {targetTypeName}({callParameters}));");
                             else if (targetIsNonPublic)
                                 AppendLine($"public static {bridgeTypeName} __CreateInstance({parameters}) => new {bridgeTypeName}(new {targetTypeName}({callParameters}));");
-                            
+
                             if (isNonPublic || targetIsNonPublic)
                                 AppendLine();
+
+                            ImmutableArray<string> targetAssemblies = builder.targetAssemblies;
+                            builder.nonPublicTypeSymbols.AddRange(ctor.Parameters
+                                .Select(static x => x.Type.GetNamedTypeSymbol())
+                                .OfType<INamedTypeSymbol>()
+                                .Where(static x => x.IsNonPublicMember())
+                                .Select(x => new BridgeGenerationData(targetAssemblies, x.OriginalDefinition, [string.Empty], ImmutableArray<string>.Empty, false, false)));
                         }
                     }
 

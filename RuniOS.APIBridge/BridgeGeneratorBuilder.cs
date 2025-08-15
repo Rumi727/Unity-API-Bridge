@@ -9,8 +9,9 @@ namespace RuniOS.APIBridge
 {
     public partial class BridgeGeneratorBuilder
     {
-        public static string Build(INamedTypeSymbol targetSymbol, ImmutableArray<string> includeMembers, ImmutableArray<string> excludeMembers, bool forceStatic, bool skipCreateInstance, out IReadOnlyList<INamedTypeSymbol> nonPublicTypeSymbols, int tabSpaceCount = 4) => new BridgeGeneratorBuilder(targetSymbol, includeMembers, excludeMembers, forceStatic, skipCreateInstance, tabSpaceCount).Build(out nonPublicTypeSymbols);
+        public static string Build(ImmutableArray<string> targetAssemblies, INamedTypeSymbol targetSymbol, ImmutableArray<string> includeMembers, ImmutableArray<string> excludeMembers, bool forceStatic, bool skipCreateInstance, out IReadOnlyList<BridgeGenerationData> nonPublicTypeSymbols, int tabSpaceCount = 4) => new BridgeGeneratorBuilder(targetAssemblies, targetSymbol, includeMembers, excludeMembers, forceStatic, skipCreateInstance, tabSpaceCount).Build(out nonPublicTypeSymbols);
         
+        readonly ImmutableArray<string> targetAssemblies;
         readonly INamedTypeSymbol targetSymbol;
         readonly ImmutableArray<string> includeMembers;
         readonly ImmutableArray<string> excludeMembers;
@@ -22,10 +23,11 @@ namespace RuniOS.APIBridge
         bool isFirstAppend = false;
         int tabCount = 0;
         
-        readonly List<INamedTypeSymbol> nonPublicTypeSymbols = [];
+        readonly List<BridgeGenerationData> nonPublicTypeSymbols = [];
         
-        BridgeGeneratorBuilder(INamedTypeSymbol targetSymbol, ImmutableArray<string> includeMembers, ImmutableArray<string> excludeMembers, bool forceStatic, bool skipCreateInstance, int tabSpaceCount = 4)
+        BridgeGeneratorBuilder(ImmutableArray<string> targetAssemblies, INamedTypeSymbol targetSymbol, ImmutableArray<string> includeMembers, ImmutableArray<string> excludeMembers, bool forceStatic, bool skipCreateInstance, int tabSpaceCount = 4)
         {
+            this.targetAssemblies = targetAssemblies;
             this.targetSymbol = targetSymbol;
             this.includeMembers = includeMembers;
             this.excludeMembers = excludeMembers;
@@ -81,7 +83,7 @@ namespace RuniOS.APIBridge
                 AppendLine(comment);
         }
         
-        public string Build(out IReadOnlyList<INamedTypeSymbol> nonPublicTypeSymbols)
+        public string Build(out IReadOnlyList<BridgeGenerationData> nonPublicTypeSymbols)
         {
             try
             {
@@ -100,6 +102,16 @@ namespace RuniOS.APIBridge
                 IEnumerable<INamedTypeSymbol> containingTypes = targetSymbol.GetContainingTypes();
                 foreach (var containingType in containingTypes.Reverse())
                 {
+                    AppendLine("/// <summary>");
+                    AppendLine("/// 이 브릿지는 다른 라이브러리의 비공개 타입과 멤버에 쉽게 접근할 수 있도록 래핑된 API입니다.<br/>");
+                    AppendLine("/// 이 API 사용 시 발생할 수 있는 모든 문제에 대한 책임은 사용자 본인에게 있습니다.<br/>");
+                    AppendLine("/// <br/>");
+                    AppendLine("/// This bridge is an API wrapper designed to provide easy access to the private types and members of another library.<br/>");
+                    AppendLine("/// The user is solely responsible for any issues that may arise from using this API.<br/>");
+                    AppendLine("/// <br/>");
+                    AppendLine("/// このブリッジは、他のライブラリの非公開タイプやメンバーに簡単にアクセスできるようにラップされたAPIです。<br/>");
+                    AppendLine("/// 本APIのご利用により発生する可能性のある全ての問題について、使用者はご自身の責任において対処するものとします。");
+                    AppendLine("/// </summary>");
                     if (containingType.IsObsolete(out string message) && SymbolEqualityComparer.Default.Equals(containingType, containingTypes.Last()))
                         AppendLine($"[System.ObsoleteAttribute({message})]");
                     AppendLine(containingType.GetTypeDeclarationText(forceStatic));
