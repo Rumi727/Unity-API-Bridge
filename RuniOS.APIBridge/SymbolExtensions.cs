@@ -542,7 +542,7 @@ namespace RuniOS.APIBridge
         public static string ValueAccessToBridgeAccess(this ITypeSymbol symbol, string valueAccessText)
         {
             if (symbol.IsKeyValuePairEnumerable(out ITypeSymbol? keyType, out ITypeSymbol? valueType) && symbol.IsNonPublicMember(true))
-                return symbol.KeyValuePairEnumerableToDictionary($"global::System.Linq.Enumerable.Select({valueAccessText}, static x => new global::System.Collections.Generic.KeyValuePair<{keyType.GetFullTypeName()}, {valueType.GetFullTypeName()}>({keyType.ValueAccessToBridgeAccess("x.Key")}, {valueType.ValueAccessToBridgeAccess("x.Value")}))");
+                return symbol.KeyValuePairEnumerableToDictionary($"global::System.Linq.Enumerable.Select({valueAccessText}, static x => new global::System.Collections.Generic.KeyValuePair<{keyType.GetTypeNameOrBridgeName()}, {valueType.GetTypeNameOrBridgeName()}>({keyType.ValueAccessToBridgeAccess("x.Key")}, {valueType.ValueAccessToBridgeAccess("x.Value")}))");
             else if (symbol.IsEnumerable(out ITypeSymbol? elementType) && symbol.IsNonPublicMember(true))
                 return symbol.EnumerableToList($"global::System.Linq.Enumerable.Select({valueAccessText}, static x => {elementType.ValueAccessToBridgeAccess("x")})");
 
