@@ -61,6 +61,9 @@ namespace RuniOS.APIBridge
                     {
                         AppendLine();
                         AppendLine();
+                        AppendLine();
+                        
+                        builder.builder.AppendLine("#nullable disable");
                     }
                     foreach (var member in members)
                     {
@@ -368,6 +371,9 @@ namespace RuniOS.APIBridge
                             }
                         }
                     }
+                    
+                    if (members.Any())
+                        builder.builder.AppendLine("#nullable restore");
                 }
             }
         }

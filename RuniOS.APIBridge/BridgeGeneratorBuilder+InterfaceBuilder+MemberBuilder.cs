@@ -48,6 +48,9 @@ namespace RuniOS.APIBridge
                     {
                         AppendLine();
                         AppendLine();
+                        AppendLine();
+                        
+                        builder.builder.AppendLine("#nullable disable");
                     }
                     foreach (var member in members)
                     {
@@ -80,7 +83,7 @@ namespace RuniOS.APIBridge
                                 if (fieldTypeIsDelegate && fieldTypeIsNonPublic)
                                     StartComment();
                                 
-                                Append($"public {fieldTypeName} {memberName} {{ get; {(!field.IsReadOnly ? "set; " : string.Empty)}}}");
+                                AppendLine($"public {fieldTypeName} {memberName} {{ get; {(!field.IsReadOnly ? "set; " : string.Empty)}}}");
                                 
                                 if (fieldTypeIsDelegate && fieldTypeIsNonPublic)
                                     EndComment();
@@ -112,7 +115,7 @@ namespace RuniOS.APIBridge
                                 if (propertyTypeIsDelegate && propertyTypeIsNonPublic)
                                     StartComment();
 
-                                Append($"public {propertyTypeName} {memberName} {{ {(property.GetMethod != null ? "get; " : string.Empty)}{(property.SetMethod != null ? "set; " : string.Empty)}}}");
+                                AppendLine($"public {propertyTypeName} {memberName} {{ {(property.GetMethod != null ? "get; " : string.Empty)}{(property.SetMethod != null ? "set; " : string.Empty)}}}");
 
                                 if (propertyTypeIsDelegate && propertyTypeIsNonPublic)
                                     EndComment();
@@ -128,7 +131,7 @@ namespace RuniOS.APIBridge
                                 if (eventTypeIsNonPublic)
                                     StartComment();
 
-                                Append($"public event {eventTypeName} {memberName} {{ add; remove; }}");
+                                AppendLine($"public event {eventTypeName} {memberName} {{ add; remove; }}");
 
                                 if (eventTypeIsNonPublic)
                                     EndComment();
@@ -170,7 +173,7 @@ namespace RuniOS.APIBridge
                                 Append("public ");
                                 if (method.IsUnsafe())
                                     Append("unsafe ");
-                                Append($"{returnType} {memberName}{method.GetTypeArgumentsText()}({parameters}) {method.GetConstraintsText()};");
+                                AppendLine($"{returnType} {memberName}{method.GetTypeArgumentsText()}({parameters}) {method.GetConstraintsText()};");
                                 
                                 if (returnTypeIsDelegate && returnTypeIsNonPublic)
                                     EndComment();
@@ -179,6 +182,9 @@ namespace RuniOS.APIBridge
                             }
                         }
                     }
+
+                    if (members.Any())
+                        builder.builder.AppendLine("#nullable restore");
                 }
             }
         }
