@@ -46,10 +46,11 @@ namespace RuniOS.APIBridge
                     AppendLine("/// </summary>");
                     AppendLine("/// <exception cref=\"global::System.ArgumentNullException\">인스턴스가 null일 경우 발생합니다.</exception>");
                     AppendLine("/// <exception cref=\"global::System.ArgumentException\">인스턴스의 타입이 유효하지 않을 경우 발생합니다.</exception>");
-                    AppendLine($"public static {bridgeTypeName} __GetInstanceFrom({getInstanceFromParamType} instance)");
+                    AppendLine("[return: global::System.Diagnostics.CodeAnalysis.NotNullIfNotNull(nameof(instance))]");
+                    AppendLine($"public static {bridgeTypeName}? __GetInstanceFrom({getInstanceFromParamType}? instance)");
                     StartBlock();
                     {
-                        AppendLine("if (instance == null) throw new global::System.ArgumentNullException(nameof(instance));");
+                        AppendLine("if (instance == null) return null;");
                         AppendLine("if (!__targetType.IsInstanceOfType(instance)) throw new global::System.ArgumentException(\"Invalid instance type\");");
                         AppendLine();
                         AppendLine($"{targetTypeName} castedInstance = ({targetTypeName})instance;");
