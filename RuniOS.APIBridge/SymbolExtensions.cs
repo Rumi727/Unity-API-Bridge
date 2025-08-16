@@ -19,31 +19,16 @@ namespace RuniOS.APIBridge
         /// 주어진 심볼이 OriginalAttributesAttribute를 통해 원래 비공개였는지 확인합니다.
         /// </summary>
         /// <param name="symbol">확인할 심볼입니다.</param>
-        /// /// <param name="checkElementType">배열일 시에 요소까지 체크할 지 여부를 결정합니다.</param>
         /// <returns>원래 비공개였으면 <see langword="true"/>, 아니면 <see langword="false"/>를 반환합니다.</returns>
-        public static bool IsNonPublicMember(this ISymbol symbol, bool checkElementType = false)
+        public static bool IsNonPublicMember(this ISymbol symbol)
         {
             switch (symbol)
             {
-                // 배열이나 포인터 타입은 항상 public
-                case IArrayTypeSymbol arrayTypeSymbol:
-                    return checkElementType && arrayTypeSymbol.ElementType.IsNonPublicMember(checkElementType);
+                case IArrayTypeSymbol:
                 case IPointerTypeSymbol:
                     return false;
-                case ITypeSymbol typeSymbol:
-                {
-                    if (checkElementType)
-                    {
-                        if (typeSymbol.IsKeyValuePairEnumerable(out ITypeSymbol? keyType, out ITypeSymbol? valueType))
-                            return keyType.IsNonPublicMember(checkElementType) || valueType.IsNonPublicMember(checkElementType);
-                        else if (typeSymbol.IsEnumerable(out ITypeSymbol? elementType))
-                            return elementType.IsNonPublicMember(checkElementType);
-                    }
-
-                    break;
-                }
                 case IPropertySymbol propertySymbol:
-                    return (propertySymbol.GetMethod?.IsNonPublicMember(checkElementType) ?? false) || (propertySymbol.SetMethod?.IsNonPublicMember(checkElementType) ?? false);
+                    return (propertySymbol.GetMethod?.IsNonPublicMember() ?? false) || (propertySymbol.SetMethod?.IsNonPublicMember() ?? false);
             }
 
             if (symbol.DeclaredAccessibility != Accessibility.Public)
@@ -76,7 +61,7 @@ namespace RuniOS.APIBridge
                 }
             }
             
-            return symbol.ContainingType?.IsNonPublicMember(checkElementType) ?? false; // 어트리뷰트가 없거나 비공개를 나타내지 않음
+            return symbol.ContainingType?.IsNonPublicMember() ?? false; // 어트리뷰트가 없거나 비공개를 나타내지 않음
         }
         
         /// <summary>
@@ -146,20 +131,27 @@ namespace RuniOS.APIBridge
         public static bool IsEnumerable(this ITypeSymbol symbol) => symbol.IsEnumerable(out _);
         public static bool IsEnumerable(this ITypeSymbol symbol, [MaybeNullWhen(false)] out ITypeSymbol elementType)
         {
-            if (symbol is IArrayTypeSymbol arrayTypeSymbol)
+            switch (symbol)
             {
-                elementType = arrayTypeSymbol.ElementType;
-                return true;
+                case IArrayTypeSymbol arrayTypeSymbol:
+                {
+                    elementType = arrayTypeSymbol.ElementType;
+                    return true;
+                }
+                case INamedTypeSymbol namedTypeSymbol when namedTypeSymbol.IsGenericType && namedTypeSymbol.TypeParameters.Length == 1 && namedTypeSymbol.OriginalDefinition.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat) == "global::System.Collections.Generic.IEnumerable<T>":
+                {
+                    if (namedTypeSymbol.TypeArguments.Any())
+                        elementType = namedTypeSymbol.TypeArguments.First();
+                    else
+                        elementType = namedTypeSymbol.TypeParameters.First();
+                    
+                    return true;
+                }
             }
 
             foreach (var interfaceSymbol in symbol.Interfaces)
             {
-                if (interfaceSymbol.OriginalDefinition.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat) == "global::System.Collections.Generic.IEnumerable<T>")
-                {
-                    elementType = interfaceSymbol.TypeArguments.First();
-                    return true;
-                }
-                else if (interfaceSymbol.IsEnumerable(out elementType))
+                if (interfaceSymbol.IsEnumerable(out elementType))
                     return true;
             }
             
@@ -200,10 +192,18 @@ namespace RuniOS.APIBridge
         {
             if (symbol is IArrayTypeSymbol)
                 return $"global::System.Linq.Enumerable.ToArray({enumerableText})";
-            else if (symbol.OriginalDefinition.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat) == "global::System.Collections.Generic.List<T>")
-                return $"global::System.Linq.Enumerable.ToList({enumerableText})";
-            else if (symbol.OriginalDefinition.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat) == "global::System.Collections.Generic.IEnumerable<T>")
-                return enumerableText;
+            else
+            {
+                switch (symbol.OriginalDefinition.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat))
+                {
+                    case "global::System.Collections.Generic.List<T>":
+                        return $"global::System.Linq.Enumerable.ToList({enumerableText})";
+                    case "global::System.Collections.Generic.HashSet<T>":
+                        return $"global::System.Collections.Generic.HashSet<{symbol.GetTypeNameOrBridgeName()}>({enumerableText})";
+                    case "global::System.Collections.Generic.IEnumerable<T>":
+                        return enumerableText;
+                }
+            }
 
             // TODO
             // * 오류 메시지 추가
@@ -484,6 +484,13 @@ namespace RuniOS.APIBridge
         {
             string result = string.Empty;
             bool any = false;
+            if (symbol.ConstraintTypes.Any())
+            {
+                if (any)
+                    result += ", ";
+                result += string.Join(", ", symbol.ConstraintTypes.Select(static x => x.GetTypeNameOrBridgeName()));
+                any = true;
+            }
             if (symbol.HasReferenceTypeConstraint)
             {
                 result += "class";
@@ -519,13 +526,6 @@ namespace RuniOS.APIBridge
                 result += "new()";
                 any = true;
             }
-            if (symbol.ConstraintTypes.Any())
-            {
-                if (any)
-                    result += ", ";
-                result += string.Join(", ", symbol.ConstraintTypes.Select(static x => x.GetTypeNameOrBridgeName()));
-                any = true;
-            }
 
             if (!any)
                 return string.Empty;
@@ -541,9 +541,9 @@ namespace RuniOS.APIBridge
         /// <returns></returns>
         public static string ValueAccessToBridgeAccess(this ITypeSymbol symbol, string valueAccessText)
         {
-            if (symbol.IsKeyValuePairEnumerable(out ITypeSymbol? keyType, out ITypeSymbol? valueType) && symbol.IsNonPublicMember(true))
+            if (symbol.IsKeyValuePairEnumerable(out ITypeSymbol? keyType, out ITypeSymbol? valueType) && (keyType.IsNonPublicMember() || valueType.IsNonPublicMember()))
                 return symbol.KeyValuePairEnumerableToDictionary($"global::System.Linq.Enumerable.Select({valueAccessText}, static x => new global::System.Collections.Generic.KeyValuePair<{keyType.GetTypeNameOrBridgeName()}, {valueType.GetTypeNameOrBridgeName()}>({keyType.ValueAccessToBridgeAccess("x.Key")}, {valueType.ValueAccessToBridgeAccess("x.Value")}))");
-            else if (symbol.IsEnumerable(out ITypeSymbol? elementType) && symbol.IsNonPublicMember(true))
+            if (symbol.IsEnumerable(out ITypeSymbol? elementType) && elementType.IsNonPublicMember())
                 return symbol.EnumerableToList($"global::System.Linq.Enumerable.Select({valueAccessText}, static x => {elementType.ValueAccessToBridgeAccess("x")})");
 
             if (symbol is not INamedTypeSymbol namedTypeSymbol || !symbol.IsNonPublicMember())
@@ -564,9 +564,9 @@ namespace RuniOS.APIBridge
         /// <returns></returns>
         public static string BridgeAccessToValueAccess(this ITypeSymbol symbol, string bridgeValueAccessText)
         {
-            if (symbol.IsKeyValuePairEnumerable(out ITypeSymbol? keyType, out ITypeSymbol? valueType) && symbol.IsNonPublicMember(true))
+            if (symbol.IsKeyValuePairEnumerable(out ITypeSymbol? keyType, out ITypeSymbol? valueType) && (keyType.IsNonPublicMember() || valueType.IsNonPublicMember()))
                 return symbol.KeyValuePairEnumerableToDictionary($"global::System.Linq.Enumerable.Select({bridgeValueAccessText}, static x => new global::System.Collections.Generic.KeyValuePair<{keyType.GetFullTypeName()}, {valueType.GetFullTypeName()}>({keyType.BridgeAccessToValueAccess("x.Key")}, {valueType.BridgeAccessToValueAccess("x.Value")}))");
-            if (symbol.IsEnumerable(out ITypeSymbol? elementType) && symbol.IsNonPublicMember(true))
+            if (symbol.IsEnumerable(out ITypeSymbol? elementType) && elementType.IsNonPublicMember())
                 return symbol.EnumerableToList($"global::System.Linq.Enumerable.Select({bridgeValueAccessText}, static x => {elementType.BridgeAccessToValueAccess("x")})");
 
             if (symbol is not INamedTypeSymbol namedTypeSymbol || !symbol.IsNonPublicMember())
