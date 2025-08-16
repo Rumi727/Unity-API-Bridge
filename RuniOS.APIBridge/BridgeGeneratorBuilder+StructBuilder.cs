@@ -1,5 +1,4 @@
 ﻿using Microsoft.CodeAnalysis;
-using System.Linq;
 using System.Runtime.InteropServices;
 
 namespace RuniOS.APIBridge
@@ -36,7 +35,7 @@ namespace RuniOS.APIBridge
                 {
                     if (!builder.skipCreateInstance)
                     {
-                        foreach (var ctor in targetSymbol.Constructors.Where(static x => !x.IsImplicitlyDeclared)) // 암시적 생성자 제외
+                        foreach (var ctor in targetSymbol.Constructors)
                         {
                             var parameters = string.Join(", ", ctor.Parameters.GetParameterText());
                             var callParameters = string.Join(", ", ctor.Parameters.GetCallParameterText());

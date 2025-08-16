@@ -32,9 +32,14 @@ namespace RuniOS.APIBridge
                     return false;
                 case ITypeSymbol typeSymbol:
                 {
-                    if (checkElementType && typeSymbol.IsEnumerable(out ITypeSymbol? elementTypeSymbol))
-                        return elementTypeSymbol.IsNonPublicMember(checkElementType);
-                    
+                    if (checkElementType)
+                    {
+                        if (typeSymbol.IsKeyValuePairEnumerable(out ITypeSymbol? keyType, out ITypeSymbol? valueType))
+                            return keyType.IsNonPublicMember(checkElementType) || valueType.IsNonPublicMember(checkElementType);
+                        else if (typeSymbol.IsEnumerable(out ITypeSymbol? elementType))
+                            return elementType.IsNonPublicMember(checkElementType);
+                    }
+
                     break;
                 }
                 case IPropertySymbol propertySymbol:
@@ -45,7 +50,7 @@ namespace RuniOS.APIBridge
                 return true;
         
             var originalAttributesAttribute = symbol.GetAttributes()
-                .Where(static ad => ad.AttributeClass?.GetFullTypeName() == "global::BepInEx.AssemblyPublicizer.OriginalAttributesAttribute")
+                .Where(static ad => ad.AttributeClass?.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat) == "global::BepInEx.AssemblyPublicizer.OriginalAttributesAttribute")
                 .FirstOrDefault();
 
             if (originalAttributesAttribute != null && originalAttributesAttribute.ConstructorArguments.Length > 0)
@@ -53,17 +58,17 @@ namespace RuniOS.APIBridge
                 var arg = originalAttributesAttribute.ConstructorArguments[0];
                 if (arg.Kind == TypedConstantKind.Enum)
                 {
-                    if (arg.Type?.GetFullTypeName() == "global::System.Reflection.MethodAttributes")
+                    if (arg.Type?.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat) == "global::System.Reflection.MethodAttributes")
                     {
                         if (arg.Value is int enumValue && (enumValue & (int)MethodAttributes.MemberAccessMask) != (int)MethodAttributes.Public)
                             return true;
                     }
-                    else if (arg.Type?.GetFullTypeName() == "global::System.Reflection.FieldAttributes")
+                    else if (arg.Type?.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat) == "global::System.Reflection.FieldAttributes")
                     {
                         if (arg.Value is int enumValue && (enumValue & (int)FieldAttributes.FieldAccessMask) != (int)FieldAttributes.Public)
                             return true;
                     }
-                    else if (arg.Type?.GetFullTypeName() == "global::System.Reflection.TypeAttributes")
+                    else if (arg.Type?.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat) == "global::System.Reflection.TypeAttributes")
                     {
                         if (arg.Value is int enumValue && (enumValue & (int)TypeAttributes.VisibilityMask) != (int)TypeAttributes.Public)
                             return true;
@@ -139,11 +144,11 @@ namespace RuniOS.APIBridge
         }
 
         public static bool IsEnumerable(this ITypeSymbol symbol) => symbol.IsEnumerable(out _);
-        public static bool IsEnumerable(this ITypeSymbol symbol, [MaybeNullWhen(false)] out ITypeSymbol elementTypeSymbol)
+        public static bool IsEnumerable(this ITypeSymbol symbol, [MaybeNullWhen(false)] out ITypeSymbol elementType)
         {
             if (symbol is IArrayTypeSymbol arrayTypeSymbol)
             {
-                elementTypeSymbol = arrayTypeSymbol.ElementType;
+                elementType = arrayTypeSymbol.ElementType;
                 return true;
             }
 
@@ -151,17 +156,35 @@ namespace RuniOS.APIBridge
             {
                 if (interfaceSymbol.OriginalDefinition.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat) == "global::System.Collections.Generic.IEnumerable<T>")
                 {
-                    elementTypeSymbol = interfaceSymbol.TypeArguments.First();
+                    elementType = interfaceSymbol.TypeArguments.First();
                     return true;
                 }
-                else if (interfaceSymbol.IsEnumerable(out elementTypeSymbol))
+                else if (interfaceSymbol.IsEnumerable(out elementType))
                     return true;
             }
             
-            if (symbol.BaseType?.IsEnumerable(out elementTypeSymbol) ?? false)
+            if (symbol.BaseType?.IsEnumerable(out elementType) ?? false)
                 return true;
 
-            elementTypeSymbol = null;
+            elementType = null;
+            return false;
+        }
+
+        public static bool IsKeyValuePairEnumerable(this ITypeSymbol symbol) => symbol.IsKeyValuePairEnumerable(out _, out _);
+
+        public static bool IsKeyValuePairEnumerable(this ITypeSymbol symbol, [MaybeNullWhen(false)] out ITypeSymbol keyType, [MaybeNullWhen(false)] out ITypeSymbol valueTypeSymbol)
+        {
+            if (symbol.IsEnumerable(out ITypeSymbol? elementTypeSymbol) && elementTypeSymbol is INamedTypeSymbol elementNamedTypeSymbol && elementNamedTypeSymbol.OriginalDefinition.TypeParameters.Length == 2 && elementNamedTypeSymbol.OriginalDefinition.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat) == "global::System.Collections.Generic.KeyValuePair<TKey, TValue>")
+            {
+                keyType = elementNamedTypeSymbol.TypeArguments[0];
+                valueTypeSymbol = elementNamedTypeSymbol.TypeArguments[1];
+                
+                return true;
+            }
+
+            keyType = null;
+            valueTypeSymbol = null;
+
             return false;
         }
 
@@ -170,7 +193,7 @@ namespace RuniOS.APIBridge
             if (symbol is IFieldSymbol fieldSymbol && fieldSymbol.AssociatedSymbol != null)
                 return true;
 
-            return symbol.GetAttributes().Any(static x => x.AttributeClass?.GetFullTypeName() == "global::System.Runtime.CompilerServices.CompilerGeneratedAttribute");
+            return symbol.GetAttributes().Any(static x => x.AttributeClass?.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat) == "global::System.Runtime.CompilerServices.CompilerGeneratedAttribute");
         }
 
         public static string EnumerableToList(this ITypeSymbol symbol, string enumerableText)
@@ -186,6 +209,14 @@ namespace RuniOS.APIBridge
             // * 오류 메시지 추가
             
             return enumerableText;
+        }
+
+        public static string KeyValuePairEnumerableToDictionary(this ITypeSymbol symbol, string keyValuePairEnumerableText)
+        {
+            if (symbol.OriginalDefinition.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat) == "global::System.Collections.Generic.Dictionary<TKey, TValue>")
+                return $"global::System.Linq.Enumerable.ToDictionary({keyValuePairEnumerableText}, static x => x.Key, static x => x.Value)";
+
+            return keyValuePairEnumerableText;
         }
 
         /// <summary>
@@ -510,7 +541,9 @@ namespace RuniOS.APIBridge
         /// <returns></returns>
         public static string ValueAccessToBridgeAccess(this ITypeSymbol symbol, string valueAccessText)
         {
-            if (symbol.IsEnumerable(out ITypeSymbol? elementType) && symbol.IsNonPublicMember(true))
+            if (symbol.IsKeyValuePairEnumerable(out ITypeSymbol? keyType, out ITypeSymbol? valueType) && symbol.IsNonPublicMember(true))
+                return symbol.KeyValuePairEnumerableToDictionary($"global::System.Linq.Enumerable.Select({valueAccessText}, static x => new global::System.Collections.Generic.KeyValuePair<{keyType.GetFullTypeName()}, {valueType.GetFullTypeName()}>({keyType.ValueAccessToBridgeAccess("x.Key")}, {valueType.ValueAccessToBridgeAccess("x.Value")}))");
+            else if (symbol.IsEnumerable(out ITypeSymbol? elementType) && symbol.IsNonPublicMember(true))
                 return symbol.EnumerableToList($"global::System.Linq.Enumerable.Select({valueAccessText}, static x => {elementType.ValueAccessToBridgeAccess("x")})");
 
             if (symbol is not INamedTypeSymbol namedTypeSymbol || !symbol.IsNonPublicMember())
@@ -531,6 +564,8 @@ namespace RuniOS.APIBridge
         /// <returns></returns>
         public static string BridgeAccessToValueAccess(this ITypeSymbol symbol, string bridgeValueAccessText)
         {
+            if (symbol.IsKeyValuePairEnumerable(out ITypeSymbol? keyType, out ITypeSymbol? valueType) && symbol.IsNonPublicMember(true))
+                return symbol.KeyValuePairEnumerableToDictionary($"global::System.Linq.Enumerable.Select({bridgeValueAccessText}, static x => new global::System.Collections.Generic.KeyValuePair<{keyType.GetFullTypeName()}, {valueType.GetFullTypeName()}>({keyType.BridgeAccessToValueAccess("x.Key")}, {valueType.BridgeAccessToValueAccess("x.Value")}))");
             if (symbol.IsEnumerable(out ITypeSymbol? elementType) && symbol.IsNonPublicMember(true))
                 return symbol.EnumerableToList($"global::System.Linq.Enumerable.Select({bridgeValueAccessText}, static x => {elementType.BridgeAccessToValueAccess("x")})");
 

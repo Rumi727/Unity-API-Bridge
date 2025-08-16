@@ -286,13 +286,13 @@ namespace RuniOS.APIBridge
                                 {
                                     switch (memberName)
                                     {
-                                        case "ToString":
-                                        case "Equals":
-                                        case "GetHashCode":
+                                        case "ToString" when method.Parameters.Length == 0:
+                                        case "Equals" when method.Parameters.Length == 1 && method.Parameters[0].Type.GetFullTypeName() == "object":
+                                        case "GetHashCode" when method.Parameters.Length == 0:
                                             Append("override ");
                                             break;
-                                        case "GetType":
-                                        case "MemberwiseClone":
+                                        case "GetType" when method.Parameters.Length == 0:
+                                        case "MemberwiseClone" when method.Parameters.Length == 0:
                                             Append("new ");
                                             break;
                                     }
@@ -301,8 +301,8 @@ namespace RuniOS.APIBridge
                                 {
                                     switch (memberName)
                                     {
-                                        case "Equals":
-                                        case "ReferenceEquals":
+                                        case "Equals" when method.Parameters.Length == 2 && method.Parameters[0].Type.GetFullTypeName() == "object" && method.Parameters[1].Type.GetFullTypeName() == "object":
+                                        case "ReferenceEquals" when method.Parameters.Length == 2 && method.Parameters[0].Type.GetFullTypeName() == "object" && method.Parameters[1].Type.GetFullTypeName() == "object":
                                             Append("new ");
                                             break;
                                     }
