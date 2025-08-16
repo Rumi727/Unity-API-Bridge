@@ -4,7 +4,7 @@
         <TargetFramework>netstandard2.1</TargetFramework>
         <LangVersion>default</LangVersion>
         <Nullable>enable</Nullable>
-        <RootNamespace>RuniOS.APIMarshal.UnityEngine.UIElements</RootNamespace>
+        <RootNamespace>RuniOS.APIBridge.UnityEditor.UIElements</RootNamespace>
     </PropertyGroup>
 
     <ItemGroup>
@@ -15,8 +15,15 @@
     </ItemGroup>
 
     <ItemGroup>
+        <ProjectReference Include="..\RuniOS.APIBridge\RuniOS.APIBridge.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+    </ItemGroup>
+
+    <ItemGroup>
         <Reference Include="UnityEngine.UIElementsModule" Publicize="true">
             <HintPath>..\dlls\UnityEngine.UIElementsModule.dll</HintPath>
+        </Reference>
+        <Reference Include="UnityEditor.UIElementsModule" Publicize="true">
+            <HintPath>..\dlls\UnityEditor.UIElementsModule.dll</HintPath>
         </Reference>
     </ItemGroup>
 

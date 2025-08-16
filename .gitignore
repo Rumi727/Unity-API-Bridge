@@ -422,3 +422,4 @@ fabric.properties
 
 # Custom Ignore
 dlls/*
+!dlls/dlls.txt
