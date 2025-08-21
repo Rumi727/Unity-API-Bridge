@@ -243,6 +243,10 @@ namespace RuniOS.APIBridge
                     if (targetData.targetAssemblies.Any() && !targetData.targetAssemblies.Contains(targetSymbol.ContainingAssembly?.Name ?? string.Empty))
                         return;
                     
+                    // 딜리게이트는 아직 지원하지 않음
+                    if (targetSymbol.TypeKind == TypeKind.Delegate)
+                        return;
+                    
                     string fileName = $"{targetSymbol.GetBridgeNamespace()}.{GetBridgeTypeNameIncludeContaining(targetSymbol)}";
                     fileName += ".g.cs";
 

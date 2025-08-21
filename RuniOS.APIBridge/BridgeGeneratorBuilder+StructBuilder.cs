@@ -1,4 +1,6 @@
 ﻿using Microsoft.CodeAnalysis;
+using System.Collections.Generic;
+using System.Linq;
 using System.Runtime.InteropServices;
 
 namespace RuniOS.APIBridge
@@ -35,11 +37,19 @@ namespace RuniOS.APIBridge
                 {
                     if (!builder.skipCreateInstance)
                     {
+                        HashSet<string> processedConstructors = [];
+                        bool anyNotDefaultCtor = targetSymbol.Constructors.Any(static c => !c.IsImplicitlyDeclared);
                         foreach (var ctor in targetSymbol.Constructors)
                         {
+                            if (anyNotDefaultCtor && ctor.IsImplicitlyDeclared)
+                                continue;
+                        
                             var parameters = string.Join(", ", ctor.Parameters.GetParameterText());
                             var callParameters = string.Join(", ", ctor.Parameters.GetCallParameterText());
                             bool isNonPublic = ctor.IsNonPublicMember();
+                            
+                            if (!processedConstructors.Add(parameters))
+                                continue;
 
                             if (isNonPublic || targetIsNonPublic)
                             {

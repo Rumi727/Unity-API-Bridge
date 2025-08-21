@@ -173,7 +173,7 @@ namespace RuniOS.APIBridge
                                 Append("public ");
                                 if (method.IsUnsafe())
                                     Append("unsafe ");
-                                AppendLine($"{returnType} {memberName}{method.GetTypeArgumentsText()}({parameters}) {method.GetConstraintsText()};");
+                                AppendLine($"{returnType} {memberName}{method.GetBridgeTypeArgumentsText()}({parameters}) {method.GetConstraintsText()};");
                                 
                                 if (returnTypeIsDelegate && returnTypeIsNonPublic)
                                     EndComment();

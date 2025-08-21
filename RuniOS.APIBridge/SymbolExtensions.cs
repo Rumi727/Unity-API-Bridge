@@ -1,4 +1,5 @@
 using Microsoft.CodeAnalysis;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
@@ -188,7 +189,7 @@ namespace RuniOS.APIBridge
             return symbol.GetAttributes().Any(static x => x.AttributeClass?.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat) == "global::System.Runtime.CompilerServices.CompilerGeneratedAttribute");
         }
 
-        public static string EnumerableToList(this ITypeSymbol symbol, string enumerableText)
+        public static string EnumerableToList(this ITypeSymbol symbol, string enumerableText, bool bridgeTypeArguments = true)
         {
             if (symbol is IArrayTypeSymbol)
                 return $"global::System.Linq.Enumerable.ToArray({enumerableText})";
@@ -199,7 +200,9 @@ namespace RuniOS.APIBridge
                     case "global::System.Collections.Generic.List<T>":
                         return $"global::System.Linq.Enumerable.ToList({enumerableText})";
                     case "global::System.Collections.Generic.HashSet<T>":
-                        return $"global::System.Collections.Generic.HashSet<{symbol.GetTypeNameOrBridgeName()}>({enumerableText})";
+                    case "global::System.Collections.Generic.Stack<T>":
+                    case "global::System.Collections.Generic.Queue<T>":
+                        return $"new {(bridgeTypeArguments ? symbol.GetTypeNameOrBridgeName() : symbol.GetFullTypeName(bridgeTypeArguments))}({enumerableText})";
                     case "global::System.Collections.Generic.IEnumerable<T>":
                         return enumerableText;
                 }
@@ -249,7 +252,7 @@ namespace RuniOS.APIBridge
             if (symbol.ContainingType != null)
                 result += symbol.ContainingType.GetBridgeTypeNameIncludeContaining() + '.';
 
-            return result + symbol.GetBridgeTypeName() + symbol.GetTypeArgumentsText();
+            return result + symbol.GetBridgeTypeName() + symbol.GetBridgeTypeArgumentsText();
         }
 
         public static string GetBridgeTypeFullName(this INamedTypeSymbol symbol) => $"global::{symbol.GetBridgeNamespace()}.{symbol.GetBridgeTypeNameIncludeContaining()}"; 
@@ -311,7 +314,7 @@ namespace RuniOS.APIBridge
             }
         }
         
-        public static string GetFullTypeName(this ITypeSymbol symbol) => $"{symbol.ToDisplayString(fullyQualifiedFormatNoGenerics)}{symbol.GetTypeArgumentsText()}";
+        public static string GetFullTypeName(this ITypeSymbol symbol, bool bridgeTypeArguments = true) => $"{symbol.ToDisplayString(fullyQualifiedFormatNoGenerics)}{(bridgeTypeArguments ? symbol.GetBridgeTypeArgumentsText() : symbol.GetTypeArgumentsText())}";
 
         public static string GetFullTypeNameIncludeNullable(this ITypeSymbol symbol)
         { 
@@ -353,16 +356,33 @@ namespace RuniOS.APIBridge
 
         public static string GetTypeParametersText(this ITypeSymbol symbol)
         {
+            if (symbol.OriginalDefinition.SpecialType == SpecialType.System_Nullable_T || symbol.OriginalDefinition.IsTupleType)
+                return string.Empty;
+            
             if (symbol is INamedTypeSymbol namedTypeSymbol && namedTypeSymbol.TypeParameters.Any())
                 return "<" + string.Join(", ", namedTypeSymbol.TypeParameters.Select(static x => x.Name)) + ">";
 
             return string.Empty;
         }
         
-        public static string GetTypeArgumentsText(this ITypeSymbol symbol)
+        public static string GetBridgeTypeArgumentsText(this ITypeSymbol symbol)
         {
+            if (symbol.OriginalDefinition.SpecialType == SpecialType.System_Nullable_T || symbol.OriginalDefinition.IsTupleType)
+                return string.Empty;
+            
             if (symbol is INamedTypeSymbol namedTypeSymbol && namedTypeSymbol.TypeArguments.Any())
                 return "<" + string.Join(", ", namedTypeSymbol.TypeArguments.Select(static x => x.GetTypeNameOrBridgeName())) + ">";
+
+            return symbol.GetTypeParametersText();
+        }
+        
+        public static string GetTypeArgumentsText(this ITypeSymbol symbol)
+        {
+            if (symbol.OriginalDefinition.SpecialType == SpecialType.System_Nullable_T || symbol.OriginalDefinition.IsTupleType)
+                return string.Empty;
+            
+            if (symbol is INamedTypeSymbol namedTypeSymbol && namedTypeSymbol.TypeArguments.Any())
+                return "<" + string.Join(", ", namedTypeSymbol.TypeArguments.Select(static x => x.GetFullTypeName())) + ">";
 
             return symbol.GetTypeParametersText();
         }
@@ -375,7 +395,7 @@ namespace RuniOS.APIBridge
                 return string.Empty;
         }
         
-        public static string GetTypeArgumentsText(this IMethodSymbol symbol)
+        public static string GetBridgeTypeArgumentsText(this IMethodSymbol symbol)
         {
             if (symbol.TypeArguments.Any())
                 return "<" + string.Join(", ", symbol.TypeArguments.Select(static x => x.GetTypeNameOrBridgeName())) + ">";
@@ -484,18 +504,18 @@ namespace RuniOS.APIBridge
         {
             string result = string.Empty;
             bool any = false;
-            if (symbol.ConstraintTypes.Any())
-            {
-                if (any)
-                    result += ", ";
-                result += string.Join(", ", symbol.ConstraintTypes.Select(static x => x.GetTypeNameOrBridgeName()));
-                any = true;
-            }
             if (symbol.HasReferenceTypeConstraint)
             {
                 result += "class";
                 if (any)
                     result += ", ";
+                any = true;
+            }
+            else if (symbol.HasValueTypeConstraint)
+            {
+                if (any)
+                    result += ", ";
+                result += "struct";
                 any = true;
             }
             else if (symbol.HasUnmanagedTypeConstraint)
@@ -505,11 +525,11 @@ namespace RuniOS.APIBridge
                 result += "unmanaged";
                 any = true;
             }
-            else if (symbol.HasValueTypeConstraint)
+            if (symbol.ConstraintTypes.Any())
             {
                 if (any)
                     result += ", ";
-                result += "struct";
+                result += string.Join(", ", symbol.ConstraintTypes.Select(static x => x.GetTypeNameOrBridgeName()));
                 any = true;
             }
             if (symbol.HasNotNullConstraint)
@@ -567,16 +587,16 @@ namespace RuniOS.APIBridge
             if (symbol.IsKeyValuePairEnumerable(out ITypeSymbol? keyType, out ITypeSymbol? valueType) && (keyType.IsNonPublicMember() || valueType.IsNonPublicMember()))
                 return symbol.KeyValuePairEnumerableToDictionary($"global::System.Linq.Enumerable.Select({bridgeValueAccessText}, static x => new global::System.Collections.Generic.KeyValuePair<{keyType.GetFullTypeName()}, {valueType.GetFullTypeName()}>({keyType.BridgeAccessToValueAccess("x.Key")}, {valueType.BridgeAccessToValueAccess("x.Value")}))");
             if (symbol.IsEnumerable(out ITypeSymbol? elementType) && elementType.IsNonPublicMember())
-                return symbol.EnumerableToList($"global::System.Linq.Enumerable.Select({bridgeValueAccessText}, static x => {elementType.BridgeAccessToValueAccess("x")})");
+                return symbol.EnumerableToList($"global::System.Linq.Enumerable.Select({bridgeValueAccessText}, static x => {elementType.BridgeAccessToValueAccess("x")})", false);
 
             if (symbol is not INamedTypeSymbol namedTypeSymbol || !symbol.IsNonPublicMember())
                 return bridgeValueAccessText;
             
-            string typeName = namedTypeSymbol.GetFullTypeName();
+            string typeName = namedTypeSymbol.GetFullTypeName(false);
             if (symbol.TypeKind == TypeKind.Enum)
                 return $"({typeName})(int){bridgeValueAccessText}";
             
-            return $"({symbol.GetFullTypeName()}){bridgeValueAccessText}.__instance";
+            return $"({symbol.GetFullTypeName(false)}){bridgeValueAccessText}.__instance";
         }
         
         public static string GetParameterText(this IEnumerable<IParameterSymbol> parameterSymbols) => string.Join(", ", parameterSymbols.Select(static x => x.GetParameterText()));
@@ -628,14 +648,25 @@ namespace RuniOS.APIBridge
                     uint uintValue => $"{uintValue}u",
                     long longValue => $"{longValue}L",
                     ulong ulongValue => $"{ulongValue}ul",
+                    float floatValue when float.IsNaN(floatValue) => "float.NaN",
+                    float floatValue when float.IsNegativeInfinity(floatValue) => "float.NegativeInfinity",
+                    float floatValue when float.IsPositiveInfinity(floatValue) => "float.PositiveInfinity",
+                    float floatValue when floatValue <= float.Epsilon => "float.Epsilon",
                     float floatValue => $"{floatValue}f",
+                    double doubleValue when double.IsNaN(doubleValue) => "double.NaN",
+                    double doubleValue when double.IsNegativeInfinity(doubleValue) => "double.NegativeInfinity",
+                    double doubleValue when double.IsPositiveInfinity(doubleValue) => "double.PositiveInfinity",
+                    double doubleValue when doubleValue <= double.Epsilon => "double.Epsilon",
                     double doubleValue => $"{doubleValue}d",
                     decimal decimalValue => $"{decimalValue}m",
                     char charValue => $"'{charValue}'",
                     string stringValue => $"\"{stringValue}\"",
                     _ => parameterSymbol.ExplicitDefaultValue?.ToString() ?? "null"
                 };
-                
+
+                if (parameterSymbol.Type.TypeKind == TypeKind.Enum)
+                    value = $"({parameterSymbol.Type.GetTypeNameOrBridgeName()}){value}";
+
                 keyword += $" = {value}";
             }
 

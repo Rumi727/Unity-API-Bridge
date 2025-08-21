@@ -318,7 +318,7 @@ namespace RuniOS.APIBridge
                                         Append($" {constraintsText}");
                                 }
                                 
-                                if (!method.Parameters.Where(static x => x.Type.IsNonPublicMember() && x.RefKind != RefKind.None).Any())
+                                if (!method.Parameters.Any(static x => x.Type.IsNonPublicMember() && x.RefKind != RefKind.None))
                                     AppendLine($" => {GetMethodCallText()};");
                                 else
                                 {
@@ -367,7 +367,7 @@ namespace RuniOS.APIBridge
                                 
                                 break;
 
-                                string GetMethodCallText() => method.ReturnType.ValueAccessToBridgeAccess($"{instanceAccessPrefix}.{memberName}{method.GetTypeArgumentsText()}({callParameters})");
+                                string GetMethodCallText() => method.ReturnType.ValueAccessToBridgeAccess($"{instanceAccessPrefix}.{memberName}{method.GetBridgeTypeArgumentsText()}({callParameters})");
                             }
                         }
                     }

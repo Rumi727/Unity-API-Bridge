@@ -1,4 +1,5 @@
 ﻿using Microsoft.CodeAnalysis;
+using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
 using System.Runtime.InteropServices;
@@ -39,18 +40,19 @@ namespace RuniOS.APIBridge
                 {
                     if (!targetIsAbstract && !builder.skipCreateInstance) // 정적/추상 클래스는 인스턴스 생성 불가
                     {
-                        string?[] ctorParameters = new string[targetSymbol.Constructors.Length];
-                        for (int i = 0; i < targetSymbol.Constructors.Length; i++)
+                        HashSet<string> processedConstructors = [];
+                        bool anyNotDefaultCtor = targetSymbol.Constructors.Any(static c => !c.IsImplicitlyDeclared);
+                        foreach (var ctor in targetSymbol.Constructors)
                         {
-                            IMethodSymbol ctor = targetSymbol.Constructors[i];
+                            if (anyNotDefaultCtor && ctor.IsImplicitlyDeclared)
+                                continue;
+                            
                             string parameters = string.Join(", ", ctor.Parameters.GetParameterText());
                             string callParameters = string.Join(", ", ctor.Parameters.GetCallParameterText());
                             bool isNonPublic = ctor.IsNonPublicMember();
-
-                            if (ctorParameters.Contains(parameters))
+                            
+                            if (!processedConstructors.Add(parameters))
                                 continue;
-
-                            ctorParameters[i] = parameters;
 
                             if (isNonPublic || targetIsNonPublic)
                             {

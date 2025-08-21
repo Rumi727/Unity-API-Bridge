@@ -6,5 +6,7 @@ UnityEditor.UIElementsModule.dll
 UnityEngine.AudioModule.dll
 UnityEngine.CoreModule.dll
 UnityEngine.IMGUIModule.dll
+UnityEngine.PropertiesModule.dll
+UnityEngine.TextRenderingModule.dll
 UnityEngine.UI.dll
 UnityEngine.UIElementsModule.dll
