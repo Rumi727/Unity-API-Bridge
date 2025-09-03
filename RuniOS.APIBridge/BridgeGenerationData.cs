@@ -10,6 +10,7 @@ namespace RuniOS.APIBridge
         ImmutableArray<string> includeMembers,
         ImmutableArray<string> excludeMembers,
         bool forceStatic,
-        bool skipCreateInstance
+        bool skipCreateInstance,
+        bool includePublicMember
     );
 }

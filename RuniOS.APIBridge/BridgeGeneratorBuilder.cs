@@ -9,7 +9,7 @@ namespace RuniOS.APIBridge
 {
     public partial class BridgeGeneratorBuilder
     {
-        public static string Build(ImmutableArray<string> targetAssemblies, INamedTypeSymbol targetSymbol, ImmutableArray<string> includeMembers, ImmutableArray<string> excludeMembers, bool forceStatic, bool skipCreateInstance, out IReadOnlyList<BridgeGenerationData> nonPublicTypeSymbols, int tabSpaceCount = 4) => new BridgeGeneratorBuilder(targetAssemblies, targetSymbol, includeMembers, excludeMembers, forceStatic, skipCreateInstance, tabSpaceCount).Build(out nonPublicTypeSymbols);
+        public static string Build(ImmutableArray<string> targetAssemblies, INamedTypeSymbol targetSymbol, ImmutableArray<string> includeMembers, ImmutableArray<string> excludeMembers, bool forceStatic, bool skipCreateInstance, bool includePublicMember, out IReadOnlyList<BridgeGenerationData> nonPublicTypeSymbols, int tabSpaceCount = 4) => new BridgeGeneratorBuilder(targetAssemblies, targetSymbol, includeMembers, excludeMembers, forceStatic, skipCreateInstance, includePublicMember, tabSpaceCount).Build(out nonPublicTypeSymbols);
         
         readonly ImmutableArray<string> targetAssemblies;
         readonly INamedTypeSymbol targetSymbol;
@@ -17,6 +17,7 @@ namespace RuniOS.APIBridge
         readonly ImmutableArray<string> excludeMembers;
         readonly bool forceStatic;
         readonly bool skipCreateInstance;
+        readonly bool includePublicMember;
         readonly int tabSpaceCount;
         
         readonly StringBuilder builder = new StringBuilder();
@@ -25,7 +26,7 @@ namespace RuniOS.APIBridge
         
         readonly List<BridgeGenerationData> nonPublicTypeSymbols = [];
         
-        BridgeGeneratorBuilder(ImmutableArray<string> targetAssemblies, INamedTypeSymbol targetSymbol, ImmutableArray<string> includeMembers, ImmutableArray<string> excludeMembers, bool forceStatic, bool skipCreateInstance, int tabSpaceCount = 4)
+        BridgeGeneratorBuilder(ImmutableArray<string> targetAssemblies, INamedTypeSymbol targetSymbol, ImmutableArray<string> includeMembers, ImmutableArray<string> excludeMembers, bool forceStatic, bool skipCreateInstance, bool includePublicMember, int tabSpaceCount = 4)
         {
             this.targetAssemblies = targetAssemblies;
             this.targetSymbol = targetSymbol;
@@ -33,6 +34,7 @@ namespace RuniOS.APIBridge
             this.excludeMembers = excludeMembers;
             this.forceStatic = forceStatic;
             this.skipCreateInstance = skipCreateInstance;
+            this.includePublicMember = includePublicMember;
             this.tabSpaceCount = tabSpaceCount;
         }
 

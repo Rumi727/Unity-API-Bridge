@@ -14,7 +14,6 @@ namespace RuniOS.APIBridge
             readonly string bridgeTypeName = targetSymbol.GetBridgeTypeName() + targetSymbol.GetTypeParametersText();
             readonly string targetTypeName = targetSymbol.GetFullTypeName();
             readonly bool targetIsStatic = builder.forceStatic;
-            readonly bool targetIsNonPublic = targetSymbol.IsNonPublicMember();
             readonly INamedTypeSymbol? targetPublicBaseType = targetSymbol.GetPublicBaseType();
             
             void Append(string text = "") => builder.Append(text);
@@ -88,7 +87,7 @@ namespace RuniOS.APIBridge
                     AppendLine("/// <summary>");
                     AppendLine("/// 브릿지 인터페이스의 내부 구현 클래스입니다.");
                     AppendLine("/// </summary>");
-                    AppendLine($"private class __{bridgeName} : {bridgeTypeName}");
+                    AppendLine($"internal partial class __{bridgeName} : {bridgeTypeName}");
                     StartBlock();
                     {
                         AppendLine($"public __{bridgeName}({targetTypeName} instance) => this.__instance = instance;"); // 생성자 매개변수는 원래 타입

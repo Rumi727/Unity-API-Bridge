@@ -49,7 +49,7 @@ namespace RuniOS.APIBridge
                             
                             string parameters = string.Join(", ", ctor.Parameters.GetParameterText());
                             string callParameters = string.Join(", ", ctor.Parameters.GetCallParameterText());
-                            bool isNonPublic = ctor.IsNonPublicMember();
+                            bool isNonPublic = builder.includePublicMember || ctor.IsNonPublicMember();
                             
                             if (!processedConstructors.Add(parameters))
                                 continue;
@@ -74,7 +74,7 @@ namespace RuniOS.APIBridge
                                 .Select(static x => x.Type.GetNamedTypeSymbol())
                                 .OfType<INamedTypeSymbol>()
                                 .Where(static x => x.IsNonPublicMember())
-                                .Select(x => new BridgeGenerationData(targetAssemblies, x.OriginalDefinition, [string.Empty], ImmutableArray<string>.Empty, false, false)));
+                                .Select(x => new BridgeGenerationData(targetAssemblies, x.OriginalDefinition, [string.Empty], ImmutableArray<string>.Empty, false, false, false)));
                         }
                     }
 

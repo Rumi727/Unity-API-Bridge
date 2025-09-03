@@ -104,6 +104,11 @@ namespace RuniOS.APIBridge
                             /// 인스턴스 생성 팩토리(<c>__CreateInstance</c>, <c>__CreateInstanceNonPublic</c>) 메서드의 생성을 건너뛸지 여부를 결정합니다.
                             /// </summary>
                             public bool skipCreateInstance { get; set; } = false;
+                            
+                            /// <summary>
+                            /// 퍼블릭인 멤버도 포함시킬지 여부를 결정합니다.
+                            /// </summary>
+                            public bool includePublicMember { get; set; } = false;
                         }
                     }
                     """);
@@ -135,6 +140,7 @@ namespace RuniOS.APIBridge
                         ImmutableArray<string> excludeMembers = ImmutableArray<string>.Empty;
                         bool forceStatic = false;
                         bool skipCreateInstance = false;
+                        bool includePublicMember = false;
 
                         // Named arguments 처리
                         foreach (var namedArgument in attributeData.NamedArguments)
@@ -165,6 +171,12 @@ namespace RuniOS.APIBridge
                                         skipCreateInstance = value;
                                     break;
                                 }
+                                case "includePublicMember" when namedArgument.Value.Kind == TypedConstantKind.Primitive:
+                                {
+                                    if (namedArgument.Value.Value is bool value)
+                                        includePublicMember = value;
+                                    break;
+                                }
                             }
                         }
                         
@@ -182,7 +194,7 @@ namespace RuniOS.APIBridge
                                 if (typeValue.Value is not INamedTypeSymbol typeSymbol)
                                     continue;
                                 
-                                generationDataList.Add(new BridgeGenerationData(targetAssemblies, typeSymbol.OriginalDefinition, includeMembers, excludeMembers, forceStatic, skipCreateInstance));
+                                generationDataList.Add(new BridgeGenerationData(targetAssemblies, typeSymbol.OriginalDefinition, includeMembers, excludeMembers, forceStatic, skipCreateInstance, includePublicMember));
                             }
                         }
                     }
@@ -236,6 +248,7 @@ namespace RuniOS.APIBridge
                     ImmutableArray<string> excludeMembers = targetData.excludeMembers;
                     bool forceStatic = targetData.forceStatic;
                     bool skipCreateInstance = targetData.skipCreateInstance;
+                    bool includePublicMember = targetData.includePublicMember;
                     
                     bridgedNonPublicTypeSymbols.Add(targetSymbol.OriginalDefinition);
                     
@@ -250,7 +263,7 @@ namespace RuniOS.APIBridge
                     string fileName = $"{targetSymbol.GetBridgeNamespace()}.{GetBridgeTypeNameIncludeContaining(targetSymbol)}";
                     fileName += ".g.cs";
 
-                    spc.AddSource(fileName, BridgeGeneratorBuilder.Build(targetData.targetAssemblies, targetSymbol, includeMembers, excludeMembers, forceStatic, skipCreateInstance, out IReadOnlyList<BridgeGenerationData> result));
+                    spc.AddSource(fileName, BridgeGeneratorBuilder.Build(targetData.targetAssemblies, targetSymbol, includeMembers, excludeMembers, forceStatic, skipCreateInstance, includePublicMember, out IReadOnlyList<BridgeGenerationData> result));
                     nonPublicTypeSymbols.AddRange(result);
                     return;
 
