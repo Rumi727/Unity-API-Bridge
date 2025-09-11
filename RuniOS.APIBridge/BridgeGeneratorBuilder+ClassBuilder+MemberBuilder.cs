@@ -318,14 +318,14 @@ namespace RuniOS.APIBridge
                                         Append($" {constraintsText}");
                                 }
                                 
-                                if (!method.Parameters.Any(static x => x.Type.IsNonPublicMember() && x.RefKind != RefKind.None))
+                                if (!method.Parameters.Any(static x => x.Type.TypeKind != TypeKind.TypeParameter && x.Type.IsNonPublicMember() && x.RefKind != RefKind.None))
                                     AppendLine($" => {GetMethodCallText()};");
                                 else
                                 {
                                     AppendLine();
                                     StartBlock();
 
-                                    foreach (IParameterSymbol parameterSymbol in method.Parameters.Where(static x => x.Type.IsNonPublicMember()))
+                                    foreach (IParameterSymbol parameterSymbol in method.Parameters.Where(static x => x.Type.TypeKind != TypeKind.TypeParameter && x.Type.IsNonPublicMember()))
                                     {
                                         string parameterTypeName = parameterSymbol.Type.GetFullTypeName();
                                         switch (parameterSymbol.RefKind)

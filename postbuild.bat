@@ -30,5 +30,14 @@ if exist "%dllpath%%name%.pdb" (
     echo %name%.pdb 파일을 찾을 수 없습니다.
 )
 
+rem .xml 파일 복사
+if exist "%dllpath%%name%.xml" (
+    copy "%dllpath%%name%.xml" "%destdir%\%name%.xml"
+    echo %name%.xml 복사 완료
+) else (
+    echo.
+    echo %name%.xml 파일을 찾을 수 없습니다.
+)
+
 echo.
 echo 빌드 후 이벤트 완료

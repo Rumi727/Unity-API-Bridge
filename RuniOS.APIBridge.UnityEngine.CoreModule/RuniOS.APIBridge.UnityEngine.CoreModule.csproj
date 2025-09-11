@@ -5,6 +5,7 @@
         <LangVersion>default</LangVersion>
         <Nullable>enable</Nullable>
         <RootNamespace>RuniOS.APIBridge.UnityEngine</RootNamespace>
+        <GenerateDocumentationFile>true</GenerateDocumentationFile>
     </PropertyGroup>
 
     <ItemGroup>
