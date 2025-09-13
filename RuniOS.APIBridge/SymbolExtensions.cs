@@ -1,6 +1,9 @@
 using Microsoft.CodeAnalysis;
+using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
+using System.IO;
 using System.Linq;
 using System.Reflection;
 
@@ -8,13 +11,6 @@ namespace RuniOS.APIBridge
 {
     public static class SymbolExtensions
     {
-        public static readonly SymbolDisplayFormat fullyQualifiedFormatNoGenerics = new SymbolDisplayFormat(
-            globalNamespaceStyle: SymbolDisplayGlobalNamespaceStyle.Included,
-            typeQualificationStyle: SymbolDisplayTypeQualificationStyle.NameAndContainingTypesAndNamespaces,
-            genericsOptions: SymbolDisplayGenericsOptions.None,
-            miscellaneousOptions: SymbolDisplayMiscellaneousOptions.EscapeKeywordIdentifiers | SymbolDisplayMiscellaneousOptions.UseSpecialTypes
-        );
-        
         /// <summary>
         /// 주어진 심볼이 OriginalAttributesAttribute를 통해 원래 비공개였는지 확인합니다.
         /// </summary>
@@ -313,7 +309,62 @@ namespace RuniOS.APIBridge
             }
         }
         
-        public static string GetFullTypeName(this ITypeSymbol symbol, bool bridgeTypeArguments = true) => $"{symbol.ToDisplayString(fullyQualifiedFormatNoGenerics)}{(bridgeTypeArguments ? symbol.GetBridgeTypeArgumentsText() : symbol.GetTypeArgumentsText())}";
+        public static string GetFullTypeName(this ITypeSymbol symbol, bool bridgeTypeArguments = true)
+        {
+            if (symbol is ITypeParameterSymbol)
+                return symbol.Name;
+            
+            string? keyword = symbol.SpecialType switch
+            {
+                SpecialType.System_Boolean => "bool",
+                SpecialType.System_SByte => "sbyte",
+                SpecialType.System_Byte => "byte",
+                SpecialType.System_Int16 => "short",
+                SpecialType.System_UInt16 => "ushort",
+                SpecialType.System_Int32 => "int",
+                SpecialType.System_UInt32 => "uint",
+                SpecialType.System_Int64 => "long",
+                SpecialType.System_UInt64 => "ulong",
+                SpecialType.System_Single => "float",
+                SpecialType.System_Double => "double",
+                SpecialType.System_Decimal => "decimal",
+                SpecialType.System_IntPtr => "nint",
+                SpecialType.System_UIntPtr => "nuint",
+                SpecialType.System_Char => "char",
+                SpecialType.System_String => "string",
+                SpecialType.System_Object => "object",
+                _ => null
+            };
+
+            if (keyword != null)
+                return keyword;
+
+            string nameSpace = symbol.ContainingNamespace != null ? $"{symbol.ContainingNamespace.ToDisplayString()}." : string.Empty;
+            string post = string.Empty;
+            
+            while (symbol is IPointerTypeSymbol pointerTypeSymbol)
+            {
+                post += "*";
+                symbol = pointerTypeSymbol.PointedAtType;
+            }
+
+            while (symbol is IArrayTypeSymbol arrayTypeSymbol)
+            {
+                post += "[]";
+                symbol = arrayTypeSymbol.ElementType;
+            }
+            
+            return $"global::{nameSpace}{InternalGetFullTypeName(symbol, bridgeTypeArguments)}{post}";
+
+            static string InternalGetFullTypeName(ITypeSymbol symbol, bool bridgeTypeArguments)
+            {
+                string result = $"{symbol.Name}{(bridgeTypeArguments ? symbol.GetBridgeTypeArgumentsText() : symbol.GetTypeArgumentsText())}";
+                if (symbol.ContainingType != null)
+                    result = $"{InternalGetFullTypeName(symbol.ContainingType, bridgeTypeArguments)}.{result}";
+                
+                return result;
+            }
+        }
 
         public static string GetFullTypeNameIncludeNullable(this ITypeSymbol symbol)
         { 
@@ -355,9 +406,6 @@ namespace RuniOS.APIBridge
 
         public static string GetTypeParametersText(this ITypeSymbol symbol)
         {
-            if (symbol.OriginalDefinition.SpecialType == SpecialType.System_Nullable_T || symbol.OriginalDefinition.IsTupleType)
-                return string.Empty;
-            
             if (symbol is INamedTypeSymbol namedTypeSymbol && namedTypeSymbol.TypeParameters.Any())
                 return "<" + string.Join(", ", namedTypeSymbol.TypeParameters.Select(static x => x.Name)) + ">";
 
@@ -366,12 +414,9 @@ namespace RuniOS.APIBridge
         
         public static string GetBridgeTypeArgumentsText(this ITypeSymbol symbol)
         {
-            if (symbol.OriginalDefinition.SpecialType == SpecialType.System_Nullable_T || symbol.OriginalDefinition.IsTupleType)
-                return string.Empty;
-            
             if (symbol is INamedTypeSymbol namedTypeSymbol && namedTypeSymbol.TypeArguments.Any())
                 return "<" + string.Join(", ", namedTypeSymbol.TypeArguments.Select(static x => x.GetTypeNameOrBridgeName())) + ">";
-
+            
             return symbol.GetTypeParametersText();
         }
         
@@ -382,7 +427,7 @@ namespace RuniOS.APIBridge
             
             if (symbol is INamedTypeSymbol namedTypeSymbol && namedTypeSymbol.TypeArguments.Any())
                 return "<" + string.Join(", ", namedTypeSymbol.TypeArguments.Select(static x => x.GetFullTypeName())) + ">";
-
+            
             return symbol.GetTypeParametersText();
         }
         

@@ -14,3 +14,4 @@ using UnityEngine.UIElements.UIR;
 [assembly: GenerateAPIBridgeForType(typeof(BaseVisualElementPanel), excludeMember = ["dataBindingManager", "layoutConfig", "styleAnimationSystem"])]
 [assembly: GenerateAPIBridgeForType(typeof(TextureEntry))]
 [assembly: GenerateAPIBridgeForType(typeof(StyleProperty), excludeMember = ["SetSize"])]
+[assembly: GenerateAPIBridgeForType(typeof(TextInputBaseField<>))]
