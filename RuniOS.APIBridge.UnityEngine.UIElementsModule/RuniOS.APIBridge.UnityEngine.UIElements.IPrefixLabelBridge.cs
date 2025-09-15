@@ -26,7 +26,7 @@ namespace RuniOS.APIBridge.UnityEngine.UIElements
             if (propertyInfo != null && propertyInfo.SetMethod != null)
                 propertyInfo.SetValue(__instance, value);
             else
-                ((INotifyValueChanged<string>)labelElement).SetValueWithoutNotify(value ?? string.Empty);
+                labelElement.text = value ?? string.Empty;
         }
     }
 }
