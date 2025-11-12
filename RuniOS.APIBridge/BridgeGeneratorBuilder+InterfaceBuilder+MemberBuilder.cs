@@ -13,8 +13,9 @@ namespace RuniOS.APIBridge
                 public static void Build(BridgeGeneratorBuilder builder, INamedTypeSymbol targetSymbol) => new MemberBuilder(builder, targetSymbol).Build();
 
                 readonly BridgeGeneratorBuilder builder = builder;
-                
-                readonly string targetTypeName = targetSymbol.GetFullTypeName();
+                readonly string bridgeNamespace = builder.bridgeNamespace;
+
+                readonly string targetTypeName = targetSymbol.GetFullTypeName(builder.bridgeNamespace);
                 readonly bool targetIsNonPublic = targetSymbol.IsNonPublicMember();
 
                 void Append(string text = "") => builder.Append(text);
@@ -34,6 +35,7 @@ namespace RuniOS.APIBridge
                 public void Build()
                 {
                     BridgeGeneratorBuilder? builder = this.builder;
+                    string bridgeNamespace = this.bridgeNamespace;
                     var members = targetSymbol.GetMembers()
                         .Where(static x => x is IFieldSymbol or IPropertySymbol or IEventSymbol or IMethodSymbol)
                         .Where(static x => !x.IsStatic)
@@ -56,7 +58,7 @@ namespace RuniOS.APIBridge
                     {
                         AppendLine();
                         
-                        string memberName = member.Name;
+                        string memberName = member.GetEscapeName();
                         if (member.IsObsolete(out string message))
                             AppendLine($"[global::System.ObsoleteAttribute(\"{message}\")]");
 
@@ -64,7 +66,7 @@ namespace RuniOS.APIBridge
                         {
                             case IFieldSymbol field:
                             {
-                                string fieldTypeName = field.Type.GetTypeNameOrBridgeName();
+                                string fieldTypeName = field.Type.GetTypeNameOrBridgeName(bridgeNamespace);
                                 bool fieldTypeIsNonPublic = false;
                                 bool fieldTypeIsDelegate = false;
                                 INamedTypeSymbol? namedTypeSymbol = field.Type.GetNamedTypeSymbol();
@@ -76,7 +78,7 @@ namespace RuniOS.APIBridge
                                     if (namedTypeSymbol.IsNonPublicMember())
                                     {
                                         fieldTypeIsNonPublic = true;
-                                        builder.nonPublicTypeSymbols.Add(new BridgeGenerationData(builder.targetAssemblies, namedTypeSymbol.OriginalDefinition, ImmutableArray<string>.Empty, ImmutableArray<string>.Empty, false, false, false));
+                                        builder.nonPublicTypeSymbols.Add(new BridgeGenerationData(bridgeNamespace, builder.targetAssemblies, namedTypeSymbol.OriginalDefinition, ImmutableArray<string>.Empty, ImmutableArray<string>.Empty, false, false, ImmutableHashSet<int>.Empty, false));
                                     }
                                 }
 
@@ -96,7 +98,7 @@ namespace RuniOS.APIBridge
                                 if (property.IsIndexer)
                                     break;
                                 
-                                string propertyTypeName = property.Type.GetTypeNameOrBridgeName();
+                                string propertyTypeName = property.Type.GetTypeNameOrBridgeName(bridgeNamespace);
                                 bool propertyTypeIsNonPublic = false;
                                 bool propertyTypeIsDelegate = false;
                                 INamedTypeSymbol? namedTypeSymbol = property.Type.GetNamedTypeSymbol();
@@ -108,7 +110,7 @@ namespace RuniOS.APIBridge
                                     if (namedTypeSymbol.IsNonPublicMember())
                                     {
                                         propertyTypeIsNonPublic = true;
-                                        builder.nonPublicTypeSymbols.Add(new BridgeGenerationData(builder.targetAssemblies, namedTypeSymbol.OriginalDefinition, ImmutableArray<string>.Empty, ImmutableArray<string>.Empty, false, false, false));
+                                        builder.nonPublicTypeSymbols.Add(new BridgeGenerationData(bridgeNamespace, builder.targetAssemblies, namedTypeSymbol.OriginalDefinition, ImmutableArray<string>.Empty, ImmutableArray<string>.Empty, false, false, ImmutableHashSet<int>.Empty, false));
                                     }
                                 }
 
@@ -124,14 +126,14 @@ namespace RuniOS.APIBridge
                             }
                             case IEventSymbol eventSymbol:
                             {
-                                string eventTypeName = eventSymbol.Type.GetTypeNameOrBridgeName();
+                                string eventTypeName = eventSymbol.Type.GetTypeNameOrBridgeName(bridgeNamespace);
                                 bool eventTypeIsNonPublic = eventSymbol.Type.IsNonPublicMember();
 
                                 // 딜리게이트가 Public이 아닐때 어떻게 브릿지를 지을지 생각하지 못했습니다.
                                 if (eventTypeIsNonPublic)
                                     StartComment();
 
-                                AppendLine($"public event {eventTypeName} {memberName} {{ add; remove; }}");
+                                AppendLine($"public event {eventTypeName} {memberName};");
 
                                 if (eventTypeIsNonPublic)
                                     EndComment();
@@ -140,8 +142,8 @@ namespace RuniOS.APIBridge
                             }
                             case IMethodSymbol method when method.MethodKind == MethodKind.Ordinary:
                             {
-                                string returnType = method.GetMethodReturnTypeName();
-                                string parameters = string.Join(", ", method.Parameters.GetParameterText());
+                                string returnType = method.GetMethodReturnTypeName(bridgeNamespace);
+                                string parameters = string.Join(", ", method.Parameters.GetParameterText(bridgeNamespace));
 
                                 bool returnTypeIsNonPublic = false;
                                 bool returnTypeIsDelegate = false;
@@ -155,7 +157,7 @@ namespace RuniOS.APIBridge
 
                                         if (namedReturnType.IsNonPublicMember())
                                         {
-                                            builder.nonPublicTypeSymbols.Add(new BridgeGenerationData(builder.targetAssemblies, namedReturnType.OriginalDefinition, ImmutableArray<string>.Empty, ImmutableArray<string>.Empty, false, false, false));
+                                            builder.nonPublicTypeSymbols.Add(new BridgeGenerationData(bridgeNamespace, builder.targetAssemblies, namedReturnType.OriginalDefinition, ImmutableArray<string>.Empty, ImmutableArray<string>.Empty, false, false, ImmutableHashSet<int>.Empty, false));
                                             returnTypeIsNonPublic = true;
                                         }
                                     }
@@ -165,7 +167,7 @@ namespace RuniOS.APIBridge
                                     .Select(static x => x.Type.GetNamedTypeSymbol())
                                     .OfType<INamedTypeSymbol>()
                                     .Where(static x => x.IsNonPublicMember())
-                                    .Select(x => new BridgeGenerationData(builder.targetAssemblies, x.OriginalDefinition, ImmutableArray<string>.Empty, ImmutableArray<string>.Empty, false, false, false)));
+                                    .Select(x => new BridgeGenerationData(bridgeNamespace, builder.targetAssemblies, x.OriginalDefinition, ImmutableArray<string>.Empty, ImmutableArray<string>.Empty, false, false, ImmutableHashSet<int>.Empty, false)));
 
                                 if (returnTypeIsDelegate && returnTypeIsNonPublic)
                                     StartComment();
@@ -173,7 +175,7 @@ namespace RuniOS.APIBridge
                                 Append("public ");
                                 if (method.IsUnsafe())
                                     Append("unsafe ");
-                                AppendLine($"{returnType} {memberName}{method.GetBridgeTypeArgumentsText()}({parameters}) {method.GetConstraintsText()};");
+                                AppendLine($"{returnType} {memberName}{method.GetBridgeTypeArgumentsText(bridgeNamespace)}({parameters}) {method.GetConstraintsText(bridgeNamespace)};");
                                 
                                 if (returnTypeIsDelegate && returnTypeIsNonPublic)
                                     EndComment();

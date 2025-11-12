@@ -8,9 +8,10 @@ namespace RuniOS.APIBridge
         readonly struct EnumBuilder(BridgeGeneratorBuilder builder, INamedTypeSymbol targetSymbol)
         {
             public static void Build(BridgeGeneratorBuilder builder, INamedTypeSymbol targetSymbol) => new EnumBuilder(builder, targetSymbol).Build();
-            
+
+            readonly string bridgeNamespace = builder.bridgeNamespace;
             readonly string bridgeName = targetSymbol.GetBridgeTypeName() + targetSymbol.GetTypeParametersText();
-            readonly string targetTypeName = targetSymbol.GetFullTypeName() + targetSymbol.GetTypeParametersText();
+            readonly string targetTypeName = targetSymbol.GetFullTypeName(builder.bridgeNamespace) + targetSymbol.GetTypeParametersText();
             
             void Append(string text = "") => builder.Append(text);
             void AppendLine(string text = "") => builder.AppendLine(text);
@@ -28,7 +29,7 @@ namespace RuniOS.APIBridge
 
                 foreach (var fieldSymbol in targetSymbol.GetMembers().OfType<IFieldSymbol>().Where(static x => x.IsConst))
                 {
-                    Append(fieldSymbol.Name);
+                    Append(fieldSymbol.GetEscapeName());
                     if (fieldSymbol.HasConstantValue)
                         Append($" = {fieldSymbol.ConstantValue}");
                     AppendLine(",");

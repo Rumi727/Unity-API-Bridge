@@ -4,7 +4,7 @@
         <TargetFramework>netstandard2.1</TargetFramework>
         <LangVersion>default</LangVersion>
         <Nullable>enable</Nullable>
-        <RootNamespace>RuniOS.APIBridge.UnityEditor.UIElements</RootNamespace>
+        <RootNamespace>RuniOS.Editor.APIBridge.UnityEditor.UI</RootNamespace>
         <GenerateDocumentationFile>true</GenerateDocumentationFile>
     </PropertyGroup>
 
@@ -23,11 +23,11 @@
     </ItemGroup>
 
     <ItemGroup>
-        <Reference Include="UnityEditor.QuickSearchModule" Publicize="true">
-            <HintPath>..\dlls\UnityEditor.QuickSearchModule.dll</HintPath>
+        <Reference Include="UnityEngine.CoreModule" Publicize="true">
+            <HintPath>..\dlls\UnityEngine.CoreModule.dll</HintPath>
         </Reference>
-        <Reference Include="UnityEditor.UIBuilderModule" Publicize="true">
-            <HintPath>..\dlls\UnityEditor.UIBuilderModule.dll</HintPath>
+        <Reference Include="UnityEditor.UI" Publicize="true">
+            <HintPath>..\dlls\UnityEditor.UI.dll</HintPath>
         </Reference>
     </ItemGroup>
 

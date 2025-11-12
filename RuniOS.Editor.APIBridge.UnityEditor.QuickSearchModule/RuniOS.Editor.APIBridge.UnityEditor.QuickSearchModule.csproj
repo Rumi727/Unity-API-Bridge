@@ -4,7 +4,7 @@
         <TargetFramework>netstandard2.1</TargetFramework>
         <LangVersion>default</LangVersion>
         <Nullable>enable</Nullable>
-        <RootNamespace>RuniOS.APIBridge.UnityEditor.UIElements</RootNamespace>
+        <RootNamespace>RuniOS.Editor.APIBridge.UnityEditor</RootNamespace>
         <GenerateDocumentationFile>true</GenerateDocumentationFile>
     </PropertyGroup>
 
@@ -23,12 +23,12 @@
     </ItemGroup>
 
     <ItemGroup>
-        <Reference Include="UnityEngine.UIElementsModule" Publicize="true">
-            <HintPath>..\dlls\UnityEngine.UIElementsModule.dll</HintPath>
-        </Reference>
-        <Reference Include="UnityEditor.UIElementsModule" Publicize="true">
-            <HintPath>..\dlls\UnityEditor.UIElementsModule.dll</HintPath>
-        </Reference>
+      <Reference Include="UnityEngine.CoreModule" Publicize="true">
+          <HintPath>..\dlls\UnityEngine.CoreModule.dll</HintPath>
+      </Reference>
+      <Reference Include="UnityEditor.QuickSearchModule" Publicize="true">
+        <HintPath>..\dlls\UnityEditor.QuickSearchModule.dll</HintPath>
+      </Reference>
     </ItemGroup>
 
     <Target Name="PostBuild" AfterTargets="PostBuildEvent">

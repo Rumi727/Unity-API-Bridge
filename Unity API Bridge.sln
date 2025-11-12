@@ -3,23 +3,27 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.14.36401.2 d17.14
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RuniOS.APIMarshal.UnityEngine.UIElementsModule", "RuniOS.APIMarshal.UnityEngine.UIElementsModule\RuniOS.APIMarshal.UnityEngine.UIElementsModule.csproj", "{78E63050-EFF0-4387-9E8E-E9A172CBB32F}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RuniOS.Editor.APIMarshal.UnityEngine.UIElementsModule", "RuniOS.Editor.APIMarshal.UnityEngine.UIElementsModule\RuniOS.Editor.APIMarshal.UnityEngine.UIElementsModule.csproj", "{78E63050-EFF0-4387-9E8E-E9A172CBB32F}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RuniOS.APIBridge.UnityEngine.CoreModule", "RuniOS.APIBridge.UnityEngine.CoreModule\RuniOS.APIBridge.UnityEngine.CoreModule.csproj", "{11E66A76-595E-4AB1-864E-8FF613A2F904}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RuniOS.Editor.APIBridge.UnityEngine.CoreModule", "RuniOS.Editor.APIBridge.UnityEngine.CoreModule\RuniOS.Editor.APIBridge.UnityEngine.CoreModule.csproj", "{11E66A76-595E-4AB1-864E-8FF613A2F904}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RuniOS.APIBridge", "RuniOS.APIBridge\RuniOS.APIBridge.csproj", "{E6981477-7638-4B20-9DB7-DC670539AE76}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RuniOS.APIBridge.UnityEngine.IMGUIModule", "RuniOS.APIBridge.UnityEngine.IMGUIModule\RuniOS.APIBridge.UnityEngine.IMGUIModule.csproj", "{3853A603-C379-4532-8B2D-B27F81A6273E}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RuniOS.Editor.APIBridge.UnityEngine.IMGUIModule", "RuniOS.Editor.APIBridge.UnityEngine.IMGUIModule\RuniOS.Editor.APIBridge.UnityEngine.IMGUIModule.csproj", "{3853A603-C379-4532-8B2D-B27F81A6273E}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RuniOS.APIBridge.UnityEngine.UIElementsModule", "RuniOS.APIBridge.UnityEngine.UIElementsModule\RuniOS.APIBridge.UnityEngine.UIElementsModule.csproj", "{783C9212-164A-4316-94DF-4CA3631CC54F}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RuniOS.Editor.APIBridge.UnityEngine.UIElementsModule", "RuniOS.Editor.APIBridge.UnityEngine.UIElementsModule\RuniOS.Editor.APIBridge.UnityEngine.UIElementsModule.csproj", "{783C9212-164A-4316-94DF-4CA3631CC54F}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RuniOS.APIBridge.UnityEditor.CoreModule", "RuniOS.APIBridge.UnityEditor.CoreModule\RuniOS.APIBridge.UnityEditor.CoreModule.csproj", "{D0D2446F-AC74-438B-AEFF-C594D04ECEC9}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RuniOS.Editor.APIBridge.UnityEditor.CoreModule", "RuniOS.Editor.APIBridge.UnityEditor.CoreModule\RuniOS.Editor.APIBridge.UnityEditor.CoreModule.csproj", "{D0D2446F-AC74-438B-AEFF-C594D04ECEC9}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RuniOS.APIBridge.UnityEditor.UI", "RuniOS.APIBridge.UnityEditor.UI\RuniOS.APIBridge.UnityEditor.UI.csproj", "{C2B13503-073D-43E0-B5F1-87F765506A0C}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RuniOS.Editor.APIBridge.UnityEditor.UI", "RuniOS.Editor.APIBridge.UnityEditor.UI\RuniOS.Editor.APIBridge.UnityEditor.UI.csproj", "{C2B13503-073D-43E0-B5F1-87F765506A0C}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RuniOS.APIBridge.UnityEditor.UIElementsModule", "RuniOS.APIBridge.UnityEditor.UIElementsModule\RuniOS.APIBridge.UnityEditor.UIElementsModule.csproj", "{025CD58B-8AC2-4C97-AFBC-D8EEACB64635}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RuniOS.Editor.APIBridge.UnityEditor.UIElementsModule", "RuniOS.Editor.APIBridge.UnityEditor.UIElementsModule\RuniOS.Editor.APIBridge.UnityEditor.UIElementsModule.csproj", "{025CD58B-8AC2-4C97-AFBC-D8EEACB64635}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RuniOS.APIBridge.UnityEditor.UIBuilderModule", "RuniOS.APIBridge.UnityEditor.UIBuilderModule\RuniOS.APIBridge.UnityEditor.UIBuilderModule.csproj", "{662938AC-118A-4282-A217-E6B49D130109}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RuniOS.Editor.APIBridge.UnityEditor.UIBuilderModule", "RuniOS.Editor.APIBridge.UnityEditor.UIBuilderModule\RuniOS.Editor.APIBridge.UnityEditor.UIBuilderModule.csproj", "{662938AC-118A-4282-A217-E6B49D130109}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RuniOS.Editor.APIBridge.UnityEditor.QuickSearchModule", "RuniOS.Editor.APIBridge.UnityEditor.QuickSearchModule\RuniOS.Editor.APIBridge.UnityEditor.QuickSearchModule.csproj", "{3FCD3146-2B80-417E-82B6-045501FB10A8}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RuniOS.APIBridge.UnityEngine.CoreModule", "RuniOS.APIBridge.UnityEngine.CoreModule\RuniOS.APIBridge.UnityEngine.CoreModule.csproj", "{63F6D066-63F6-48AD-81FA-8F1EC9C65960}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -63,6 +67,14 @@ Global
 		{662938AC-118A-4282-A217-E6B49D130109}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{662938AC-118A-4282-A217-E6B49D130109}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{662938AC-118A-4282-A217-E6B49D130109}.Release|Any CPU.Build.0 = Release|Any CPU
+		{3FCD3146-2B80-417E-82B6-045501FB10A8}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{3FCD3146-2B80-417E-82B6-045501FB10A8}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{3FCD3146-2B80-417E-82B6-045501FB10A8}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{3FCD3146-2B80-417E-82B6-045501FB10A8}.Release|Any CPU.Build.0 = Release|Any CPU
+		{63F6D066-63F6-48AD-81FA-8F1EC9C65960}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{63F6D066-63F6-48AD-81FA-8F1EC9C65960}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{63F6D066-63F6-48AD-81FA-8F1EC9C65960}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{63F6D066-63F6-48AD-81FA-8F1EC9C65960}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

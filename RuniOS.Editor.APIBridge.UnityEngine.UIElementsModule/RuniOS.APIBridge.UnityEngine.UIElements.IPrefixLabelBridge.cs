@@ -1,8 +1,7 @@
 ﻿using System;
 using System.Reflection;
-using UnityEngine.UIElements;
 
-namespace RuniOS.APIBridge.UnityEngine.UIElements
+namespace RuniOS.Editor.APIBridge.UnityEngine.UIElements
 {
     public partial interface IPrefixLabelBridge
     {

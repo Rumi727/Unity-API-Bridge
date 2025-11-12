@@ -1,9 +1,7 @@
 using Microsoft.CodeAnalysis;
-using System;
+using Microsoft.CodeAnalysis.CSharp;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
-using System.IO;
 using System.Linq;
 using System.Reflection;
 
@@ -184,7 +182,7 @@ namespace RuniOS.APIBridge
             return symbol.GetAttributes().Any(static x => x.AttributeClass?.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat) == "global::System.Runtime.CompilerServices.CompilerGeneratedAttribute");
         }
 
-        public static string EnumerableToList(this ITypeSymbol symbol, string enumerableText, bool bridgeTypeArguments = true)
+        public static string EnumerableToList(this ITypeSymbol symbol, string bridgeNamespace, string enumerableText, bool bridgeTypeArguments = true)
         {
             if (symbol is IArrayTypeSymbol)
                 return $"global::System.Linq.Enumerable.ToArray({enumerableText})";
@@ -197,7 +195,7 @@ namespace RuniOS.APIBridge
                     case "global::System.Collections.Generic.HashSet<T>":
                     case "global::System.Collections.Generic.Stack<T>":
                     case "global::System.Collections.Generic.Queue<T>":
-                        return $"new {(bridgeTypeArguments ? symbol.GetTypeNameOrBridgeName() : symbol.GetFullTypeName(bridgeTypeArguments))}({enumerableText})";
+                        return $"new {(bridgeTypeArguments ? symbol.GetTypeNameOrBridgeName(bridgeNamespace) : symbol.GetFullTypeName(bridgeNamespace, bridgeTypeArguments))}({enumerableText})";
                     case "global::System.Collections.Generic.IEnumerable<T>":
                         return enumerableText;
                 }
@@ -221,8 +219,9 @@ namespace RuniOS.APIBridge
         /// 대상 심볼의 네임스페이스를 기반으로 브릿지 네임스페이스를 생성합니다.
         /// </summary>
         /// <param name="symbol">대상 심볼입니다.</param>
+        /// <param name="bridgeNameSpace">네임스페이스를 결정합니다.</param>
         /// <returns>생성된 브릿지 네임스페이스 문자열입니다.</returns>
-        public static string GetBridgeNamespace(this INamedTypeSymbol symbol)
+        public static string GetBridgeNamespace(this INamedTypeSymbol symbol, string bridgeNameSpace)
         {
             INamespaceSymbol? namespaceSymbol = symbol.ContainingNamespace;
             string result = string.Empty;
@@ -232,7 +231,7 @@ namespace RuniOS.APIBridge
                 namespaceSymbol = namespaceSymbol.ContainingNamespace;
             }
             
-            return "RuniOS.APIBridge" + result;
+            return bridgeNameSpace + result;
         }
 
         /// <summary>
@@ -240,17 +239,18 @@ namespace RuniOS.APIBridge
         /// 중첩 타입의 경우 'OuterBridge.InnerBridge' 형태로 생성합니다.
         /// </summary>
         /// <param name="symbol">대상 심볼입니다.</param>
+        /// <param name="bridgeNamespace"></param>
         /// <returns>생성된 브릿지 타입 이름 문자열입니다.</returns>
-        public static string GetBridgeTypeNameIncludeContaining(this INamedTypeSymbol symbol)
+        public static string GetBridgeTypeNameIncludeContaining(this INamedTypeSymbol symbol, string bridgeNamespace)
         {
             string result = string.Empty;
             if (symbol.ContainingType != null)
-                result += symbol.ContainingType.GetBridgeTypeNameIncludeContaining() + '.';
+                result += symbol.ContainingType.GetBridgeTypeNameIncludeContaining(bridgeNamespace) + '.';
 
-            return result + symbol.GetBridgeTypeName() + symbol.GetBridgeTypeArgumentsText();
+            return result + symbol.GetBridgeTypeName() + symbol.GetBridgeTypeArgumentsText(bridgeNamespace);
         }
 
-        public static string GetBridgeTypeFullName(this INamedTypeSymbol symbol) => $"global::{symbol.GetBridgeNamespace()}.{symbol.GetBridgeTypeNameIncludeContaining()}"; 
+        public static string GetBridgeTypeFullName(this INamedTypeSymbol symbol, string bridgeNamespace) => $"global::{symbol.GetBridgeNamespace(bridgeNamespace)}.{symbol.GetBridgeTypeNameIncludeContaining(bridgeNamespace)}"; 
         
         public static string GetBridgeTypeName(this INamedTypeSymbol symbol) => symbol.Name + "Bridge";
 
@@ -259,17 +259,18 @@ namespace RuniOS.APIBridge
         /// 비공개 타입이 아닌경우, 주어진 타입의 전체 이름을 반환합니다.
         /// </summary>
         /// <param name="symbol">변환할 타입 심볼입니다.</param>
+        /// <param name="bridgeNamespace">브릿지 네임스페이스</param>
         /// <returns>브릿지 타입의 완전한 이름 또는 원본 타입의 이름입니다.</returns>
-        public static string GetTypeNameOrBridgeName(this ITypeSymbol symbol)
+        public static string GetTypeNameOrBridgeName(this ITypeSymbol symbol, string bridgeNamespace)
         {
             if (symbol.IsNonPublicMember() && symbol.TypeKind != TypeKind.Delegate && symbol is INamedTypeSymbol namedTypeSymbol)
-                return namedTypeSymbol.GetBridgeTypeFullName();
+                return namedTypeSymbol.GetBridgeTypeFullName(bridgeNamespace);
 
             return symbol switch
             {
-                IArrayTypeSymbol arrayTypeSymbol => $"{arrayTypeSymbol.ElementType.GetTypeNameOrBridgeName()}[]", // 배열 타입 처리 (예: MyClass[] -> MyClassBridge[])
-                IPointerTypeSymbol pointerTypeSymbol => $"{pointerTypeSymbol.PointedAtType.GetTypeNameOrBridgeName()}*", // 포인터 타입 처리 (예: MyClass* -> MyClassBridge*)
-                _ => symbol.GetFullTypeName() // 그 외 기본 타입이나 다른 어셈블리 타입은 그대로 사용
+                IArrayTypeSymbol arrayTypeSymbol => $"{arrayTypeSymbol.ElementType.GetTypeNameOrBridgeName(bridgeNamespace)}[]", // 배열 타입 처리 (예: MyClass[] -> MyClassBridge[])
+                IPointerTypeSymbol pointerTypeSymbol => $"{pointerTypeSymbol.PointedAtType.GetTypeNameOrBridgeName(bridgeNamespace)}*", // 포인터 타입 처리 (예: MyClass* -> MyClassBridge*)
+                _ => symbol.GetFullTypeName(bridgeNamespace) // 그 외 기본 타입이나 다른 어셈블리 타입은 그대로 사용
             };
         }
 
@@ -309,7 +310,7 @@ namespace RuniOS.APIBridge
             }
         }
         
-        public static string GetFullTypeName(this ITypeSymbol symbol, bool bridgeTypeArguments = true)
+        public static string GetFullTypeName(this ITypeSymbol symbol, string bridgeNamespace, bool bridgeTypeArguments = true)
         {
             if (symbol is ITypeParameterSymbol)
                 return symbol.Name;
@@ -354,21 +355,21 @@ namespace RuniOS.APIBridge
                 symbol = arrayTypeSymbol.ElementType;
             }
             
-            return $"global::{nameSpace}{InternalGetFullTypeName(symbol, bridgeTypeArguments)}{post}";
+            return $"global::{nameSpace}{InternalGetFullTypeName(symbol, bridgeTypeArguments, bridgeNamespace)}{post}";
 
-            static string InternalGetFullTypeName(ITypeSymbol symbol, bool bridgeTypeArguments)
+            static string InternalGetFullTypeName(ITypeSymbol symbol, bool bridgeTypeArguments, string bridgeNamespace)
             {
-                string result = $"{symbol.Name}{(bridgeTypeArguments ? symbol.GetBridgeTypeArgumentsText() : symbol.GetTypeArgumentsText())}";
+                string result = $"{symbol.Name}{(bridgeTypeArguments ? symbol.GetBridgeTypeArgumentsText(bridgeNamespace) : symbol.GetTypeArgumentsText(bridgeNamespace))}";
                 if (symbol.ContainingType != null)
-                    result = $"{InternalGetFullTypeName(symbol.ContainingType, bridgeTypeArguments)}.{result}";
+                    result = $"{InternalGetFullTypeName(symbol.ContainingType, bridgeTypeArguments, bridgeNamespace)}.{result}";
                 
                 return result;
             }
         }
 
-        public static string GetFullTypeNameIncludeNullable(this ITypeSymbol symbol)
+        public static string GetFullTypeNameIncludeNullable(this ITypeSymbol symbol, string bridgeNamespace)
         { 
-            string result = symbol.GetFullTypeName();
+            string result = symbol.GetFullTypeName(bridgeNamespace);
             if (symbol.NullableAnnotation == NullableAnnotation.Annotated || symbol.SpecialType == SpecialType.System_Nullable_T)
                 result += "?";
             
@@ -412,21 +413,21 @@ namespace RuniOS.APIBridge
             return string.Empty;
         }
         
-        public static string GetBridgeTypeArgumentsText(this ITypeSymbol symbol)
+        public static string GetBridgeTypeArgumentsText(this ITypeSymbol symbol, string bridgeNamespace)
         {
             if (symbol is INamedTypeSymbol namedTypeSymbol && namedTypeSymbol.TypeArguments.Any())
-                return "<" + string.Join(", ", namedTypeSymbol.TypeArguments.Select(static x => x.GetTypeNameOrBridgeName())) + ">";
+                return "<" + string.Join(", ", namedTypeSymbol.TypeArguments.Select(x => x.GetTypeNameOrBridgeName(bridgeNamespace))) + ">";
             
             return symbol.GetTypeParametersText();
         }
         
-        public static string GetTypeArgumentsText(this ITypeSymbol symbol)
+        public static string GetTypeArgumentsText(this ITypeSymbol symbol, string bridgeNamespace)
         {
             if (symbol.OriginalDefinition.SpecialType == SpecialType.System_Nullable_T || symbol.OriginalDefinition.IsTupleType)
                 return string.Empty;
             
             if (symbol is INamedTypeSymbol namedTypeSymbol && namedTypeSymbol.TypeArguments.Any())
-                return "<" + string.Join(", ", namedTypeSymbol.TypeArguments.Select(static x => x.GetFullTypeName())) + ">";
+                return "<" + string.Join(", ", namedTypeSymbol.TypeArguments.Select(x => x.GetFullTypeName(bridgeNamespace))) + ">";
             
             return symbol.GetTypeParametersText();
         }
@@ -439,10 +440,10 @@ namespace RuniOS.APIBridge
                 return string.Empty;
         }
         
-        public static string GetBridgeTypeArgumentsText(this IMethodSymbol symbol)
+        public static string GetBridgeTypeArgumentsText(this IMethodSymbol symbol, string bridgeNamespace)
         {
             if (symbol.TypeArguments.Any())
-                return "<" + string.Join(", ", symbol.TypeArguments.Select(static x => x.GetTypeNameOrBridgeName())) + ">";
+                return "<" + string.Join(", ", symbol.TypeArguments.Select(x => x.GetTypeNameOrBridgeName(bridgeNamespace))) + ">";
             else
                 return string.Empty;
         }
@@ -457,7 +458,7 @@ namespace RuniOS.APIBridge
             _ => string.Empty
         };
 
-        public static string GetTypeDeclarationText(this INamedTypeSymbol symbol, bool forceStatic, bool partial)
+        public static string GetTypeDeclarationText(this INamedTypeSymbol symbol, string bridgeNamespace, bool forceStatic, bool partial)
         {
             string result = "public ";
             switch (symbol.TypeKind)
@@ -493,25 +494,26 @@ namespace RuniOS.APIBridge
             result += $"{symbol.GetTypeDeclarationKindName()} {symbol.GetBridgeTypeName()}{symbol.GetTypeParametersText()}";
             if (!partial && symbol.EnumUnderlyingType != null)
             {
-                string enumUnderlyingTypeName = symbol.EnumUnderlyingType.GetFullTypeName();
+                string enumUnderlyingTypeName = symbol.EnumUnderlyingType.GetFullTypeName(bridgeNamespace);
                 if (enumUnderlyingTypeName != "int")
-                    result += $" : {symbol.EnumUnderlyingType.GetFullTypeName()}";
+                    result += $" : {symbol.EnumUnderlyingType.GetFullTypeName(bridgeNamespace)}";
             }
             
-            return $"{result} {symbol.GetConstraintsText()}";
+            return $"{result} {symbol.GetConstraintsText(bridgeNamespace)}";
         }
 
         /// <summary>
         /// 메소드의 반환 타입을 브릿지 타입으로 변환합니다.
         /// </summary>
         /// <param name="methodSymbol">변환할 메소드 심볼입니다.</param>
+        /// <param name="bridgeNamespace">브릿지 네임스페이스</param>
         /// <returns>브릿지 타입의 완전한 이름 또는 원본 타입의 이름입니다.</returns>
-        public static string GetMethodReturnTypeName(this IMethodSymbol methodSymbol)
+        public static string GetMethodReturnTypeName(this IMethodSymbol methodSymbol, string bridgeNamespace)
         {
             if (methodSymbol.ReturnsVoid)
                 return "void";
         
-            return methodSymbol.ReturnType.GetTypeNameOrBridgeName();
+            return methodSymbol.ReturnType.GetTypeNameOrBridgeName(bridgeNamespace);
         }
 
         public static INamedTypeSymbol? GetPublicBaseType(this INamedTypeSymbol? typeSymbol)
@@ -527,32 +529,40 @@ namespace RuniOS.APIBridge
             return null;
         }
 
-        public static string GetConstraintsText(this ITypeSymbol symbol)
+        public static string GetConstraintsText(this ITypeSymbol symbol, string bridgeNamespace)
         {
             if (symbol is INamedTypeSymbol namedTypeSymbol)
-                return string.Join(", ", namedTypeSymbol.TypeParameters.Select(static x => x.GetConstraintsText()).Where(static x => !string.IsNullOrEmpty(x)));
+                return string.Join(", ", namedTypeSymbol.TypeParameters.Select(x => x.GetConstraintsText(bridgeNamespace)).Where(static x => !string.IsNullOrEmpty(x)));
             
             return string.Empty;
         }
         
-        public static string GetConstraintsText(this IMethodSymbol symbol) => string.Join(", ", symbol.TypeParameters.Select(static x => x.GetConstraintsText()).Where(static x => !string.IsNullOrEmpty(x)));
+        public static string GetConstraintsText(this IMethodSymbol symbol, string bridgeNamespace) => string.Join(", ", symbol.TypeParameters.Select(x => x.GetConstraintsText(bridgeNamespace)).Where(static x => !string.IsNullOrEmpty(x)));
 
         /// <summary>
         /// 지정된 제네릭 타입 매개변수의 모든 제약 조건을 문자열로 반환합니다.
         /// </summary>
         /// <param name="symbol">확인할 <see cref="ITypeParameterSymbol"/>입니다.</param>
+        /// <param name="bridgeNamespace">브릿지 네임스페이스</param>
         /// <returns>
         /// 모든 제약 조건을 포함하는 문자열을 반환합니다. 제약 조건이 없으면 빈 문자열을 반환합니다.
         /// </returns>
-        public static string GetConstraintsText(this ITypeParameterSymbol symbol)
+        public static string GetConstraintsText(this ITypeParameterSymbol symbol, string bridgeNamespace)
         {
             string result = string.Empty;
             bool any = false;
-            if (symbol.HasReferenceTypeConstraint)
+            if (symbol.HasUnmanagedTypeConstraint)
             {
-                result += "class";
+                result += "unmanaged";
                 if (any)
                     result += ", ";
+                any = true;
+            }
+            else if (symbol.HasReferenceTypeConstraint)
+            {
+                if (any)
+                    result += ", ";
+                result += "class";
                 any = true;
             }
             else if (symbol.HasValueTypeConstraint)
@@ -562,18 +572,11 @@ namespace RuniOS.APIBridge
                 result += "struct";
                 any = true;
             }
-            else if (symbol.HasUnmanagedTypeConstraint)
-            {
-                if (any)
-                    result += ", ";
-                result += "unmanaged";
-                any = true;
-            }
             if (symbol.ConstraintTypes.Any())
             {
                 if (any)
                     result += ", ";
-                result += string.Join(", ", symbol.ConstraintTypes.Select(static x => x.GetTypeNameOrBridgeName()));
+                result += string.Join(", ", symbol.ConstraintTypes.Select(x => x.GetTypeNameOrBridgeName(bridgeNamespace)));
                 any = true;
             }
             if (symbol.HasNotNullConstraint)
@@ -601,19 +604,20 @@ namespace RuniOS.APIBridge
         /// 원본 타입의 값 엑세스 텍스트를 가능하면 브릿지 타입의 엑세스로 변환합니다.
         /// </summary>
         /// <param name="symbol"></param>
+        /// <param name="bridgeNamespace"></param>
         /// <param name="valueAccessText"></param>
         /// <returns></returns>
-        public static string ValueAccessToBridgeAccess(this ITypeSymbol symbol, string valueAccessText)
+        public static string ValueAccessToBridgeAccess(this ITypeSymbol symbol, string bridgeNamespace, string valueAccessText)
         {
             if (symbol.IsKeyValuePairEnumerable(out ITypeSymbol? keyType, out ITypeSymbol? valueType) && (keyType.IsNonPublicMember() || valueType.IsNonPublicMember()))
-                return symbol.KeyValuePairEnumerableToDictionary($"global::System.Linq.Enumerable.Select({valueAccessText}, static x => new global::System.Collections.Generic.KeyValuePair<{keyType.GetTypeNameOrBridgeName()}, {valueType.GetTypeNameOrBridgeName()}>({keyType.ValueAccessToBridgeAccess("x.Key")}, {valueType.ValueAccessToBridgeAccess("x.Value")}))");
+                return symbol.KeyValuePairEnumerableToDictionary($"global::System.Linq.Enumerable.Select({valueAccessText}, static x => new global::System.Collections.Generic.KeyValuePair<{keyType.GetTypeNameOrBridgeName(bridgeNamespace)}, {valueType.GetTypeNameOrBridgeName(bridgeNamespace)}>({keyType.ValueAccessToBridgeAccess(bridgeNamespace, "x.Key")}, {valueType.ValueAccessToBridgeAccess(bridgeNamespace, "x.Value")}))");
             if (symbol.IsEnumerable(out ITypeSymbol? elementType) && elementType.IsNonPublicMember())
-                return symbol.EnumerableToList($"global::System.Linq.Enumerable.Select({valueAccessText}, static x => {elementType.ValueAccessToBridgeAccess("x")})");
+                return symbol.EnumerableToList(bridgeNamespace, $"global::System.Linq.Enumerable.Select({valueAccessText}, static x => {elementType.ValueAccessToBridgeAccess(bridgeNamespace, "x")})");
 
-            if (symbol is not INamedTypeSymbol namedTypeSymbol || !symbol.IsNonPublicMember())
+            if (symbol is not INamedTypeSymbol namedTypeSymbol || !symbol.IsNonPublicMember() || namedTypeSymbol.TypeKind == TypeKind.Delegate)
                 return valueAccessText;
             
-            string bridgeTypeName = namedTypeSymbol.GetBridgeTypeFullName();
+            string bridgeTypeName = namedTypeSymbol.GetBridgeTypeFullName(bridgeNamespace);
             if (symbol.TypeKind == TypeKind.Enum)
                 return $"({bridgeTypeName})(int){valueAccessText}";
             
@@ -624,33 +628,35 @@ namespace RuniOS.APIBridge
         /// 브릿지 타입의 엑세스 텍스트를 가능하면 원본 타입의 값 엑세스 테스트로 변환합니다.
         /// </summary>
         /// <param name="symbol"></param>
+        /// <param name="bridgeNamespace"></param>
         /// <param name="bridgeValueAccessText"></param>
         /// <returns></returns>
-        public static string BridgeAccessToValueAccess(this ITypeSymbol symbol, string bridgeValueAccessText)
+        public static string BridgeAccessToValueAccess(this ITypeSymbol symbol, string bridgeNamespace, string bridgeValueAccessText)
         {
             if (symbol.IsKeyValuePairEnumerable(out ITypeSymbol? keyType, out ITypeSymbol? valueType) && (keyType.IsNonPublicMember() || valueType.IsNonPublicMember()))
-                return symbol.KeyValuePairEnumerableToDictionary($"global::System.Linq.Enumerable.Select({bridgeValueAccessText}, static x => new global::System.Collections.Generic.KeyValuePair<{keyType.GetFullTypeName()}, {valueType.GetFullTypeName()}>({keyType.BridgeAccessToValueAccess("x.Key")}, {valueType.BridgeAccessToValueAccess("x.Value")}))");
+                return symbol.KeyValuePairEnumerableToDictionary($"global::System.Linq.Enumerable.Select({bridgeValueAccessText}, static x => new global::System.Collections.Generic.KeyValuePair<{keyType.GetFullTypeName(bridgeNamespace)}, {valueType.GetFullTypeName(bridgeNamespace)}>({keyType.BridgeAccessToValueAccess(bridgeNamespace, "x.Key")}, {valueType.BridgeAccessToValueAccess(bridgeNamespace, "x.Value")}))");
             if (symbol.IsEnumerable(out ITypeSymbol? elementType) && elementType.IsNonPublicMember())
-                return symbol.EnumerableToList($"global::System.Linq.Enumerable.Select({bridgeValueAccessText}, static x => {elementType.BridgeAccessToValueAccess("x")})", false);
+                return symbol.EnumerableToList(bridgeNamespace, $"global::System.Linq.Enumerable.Select({bridgeValueAccessText}, static x => {elementType.BridgeAccessToValueAccess(bridgeNamespace, "x")})", false);
 
-            if (symbol is not INamedTypeSymbol namedTypeSymbol || !symbol.IsNonPublicMember())
+            if (symbol is not INamedTypeSymbol namedTypeSymbol || !symbol.IsNonPublicMember() || namedTypeSymbol.TypeKind == TypeKind.Delegate)
                 return bridgeValueAccessText;
             
-            string typeName = namedTypeSymbol.GetFullTypeName(false);
+            string typeName = namedTypeSymbol.GetFullTypeName(bridgeNamespace, false);
             if (symbol.TypeKind == TypeKind.Enum)
                 return $"({typeName})(int){bridgeValueAccessText}";
             
-            return $"({symbol.GetFullTypeName(false)}){bridgeValueAccessText}.__instance";
+            return $"({symbol.GetFullTypeName(bridgeNamespace, false)}){bridgeValueAccessText}.__instance";
         }
         
-        public static string GetParameterText(this IEnumerable<IParameterSymbol> parameterSymbols) => string.Join(", ", parameterSymbols.Select(static x => x.GetParameterText()));
+        public static string GetParameterText(this IEnumerable<IParameterSymbol> parameterSymbols, string bridgeNamespace) => string.Join(", ", parameterSymbols.Select(x => x.GetParameterText(bridgeNamespace)));
 
         /// <summary>
         /// 파라미터를 코드 텍스트로 변환합니다.
         /// </summary>
         /// <param name="parameterSymbol">변환할 파라미터 심볼입니다.</param>
+        /// <param name="bridgeNamespace">브릿지 네임스페이스</param>
         /// <returns>this, params, ref, out, in 키워드 및 선택형을 적절하게 붙여줍니다</returns>
-        public static string GetParameterText(this IParameterSymbol parameterSymbol)
+        public static string GetParameterText(this IParameterSymbol parameterSymbol, string bridgeNamespace)
         {
             string keyword = string.Empty;
             if (parameterSymbol.IsOptional && !parameterSymbol.HasExplicitDefaultValue)
@@ -683,7 +689,7 @@ namespace RuniOS.APIBridge
                 }
             }
 
-            keyword += $"{parameterSymbol.Type.GetTypeNameOrBridgeName()} {parameterSymbol.Name}";
+            keyword += $"{parameterSymbol.Type.GetTypeNameOrBridgeName(bridgeNamespace)} {parameterSymbol.GetEscapeName()}";
             if (parameterSymbol.HasExplicitDefaultValue)
             {
                 string value = parameterSymbol.ExplicitDefaultValue switch
@@ -705,11 +711,11 @@ namespace RuniOS.APIBridge
                     decimal decimalValue => $"{decimalValue}m",
                     char charValue => $"'{charValue}'",
                     string stringValue => $"\"{stringValue}\"",
-                    _ => parameterSymbol.ExplicitDefaultValue?.ToString() ?? "null"
+                    _ => parameterSymbol.ExplicitDefaultValue?.ToString() ?? (parameterSymbol.Type is ITypeParameterSymbol ? "default" : "null")
                 };
 
                 if (parameterSymbol.Type.TypeKind == TypeKind.Enum)
-                    value = $"({parameterSymbol.Type.GetTypeNameOrBridgeName()}){value}";
+                    value = $"({parameterSymbol.Type.GetTypeNameOrBridgeName(bridgeNamespace)}){value}";
 
                 keyword += $" = {value}";
             }
@@ -717,14 +723,15 @@ namespace RuniOS.APIBridge
             return keyword;
         }
         
-        public static string GetCallParameterText(this IEnumerable<IParameterSymbol> parameterSymbols) => string.Join(", ", parameterSymbols.Select(static x => x.GetCallParameterText()));
-        
+        public static string GetCallParameterText(this IEnumerable<IParameterSymbol> parameterSymbols, string bridgeNamespace) => string.Join(", ", parameterSymbols.Select(x => x.GetCallParameterText(bridgeNamespace)));
+
         /// <summary>
         /// 콜 파라미터를 코드 텍스트로 변환합니다.
         /// </summary>
         /// <param name="parameterSymbol">변환할 파라미터 심볼입니다.</param>
+        /// <param name="bridgeNamespace">브릿지 네임스페이스</param>
         /// <returns>비공개 타입에 ref, out, in 키워드가 붙을 경우, 파라미터 이름은 __로 시작하고, 키워드가 없을 경우엔 .__instance가 접미사로 붙습니다.</returns>
-        public static string GetCallParameterText(this IParameterSymbol parameterSymbol)
+        public static string GetCallParameterText(this IParameterSymbol parameterSymbol, string bridgeNamespace)
         {
             bool isNonPublic = parameterSymbol.Type.IsNonPublicMember();
             string result = string.Empty;
@@ -732,7 +739,7 @@ namespace RuniOS.APIBridge
             switch (parameterSymbol.RefKind)
             {
                 case RefKind.None:
-                    return parameterSymbol.Type.BridgeAccessToValueAccess(parameterSymbol.Name);
+                    return parameterSymbol.Type.BridgeAccessToValueAccess(bridgeNamespace, parameterSymbol.GetEscapeName());
                 case RefKind.Ref:
                 {
                     result += "ref ";
@@ -756,9 +763,24 @@ namespace RuniOS.APIBridge
             }
             
             if (parameterSymbol.Type.TypeKind != TypeKind.TypeParameter && isNonPublic)
-                result += "__";
+                return result + "__" + parameterSymbol.Name;
 
-            return result + parameterSymbol.Name;
+            return result + parameterSymbol.GetEscapeName();
+        }
+
+        /// <summary>
+        /// ISymbol의 이름을 가져옵니다.<br/>
+        /// 이름이 C# 예약 키워드일 경우, <c>@</c> 접두사를 붙여 이스케이프합니다.
+        /// </summary>
+        /// <param name="symbol">이름을 가져올 <see cref="ISymbol"/>입니다.</param>
+        /// <returns>이스케이프된 심볼 이름입니다.</returns>
+        public static string GetEscapeName(this ISymbol symbol)
+        {
+            string name = symbol.Name;
+            if (string.IsNullOrEmpty(name))
+                return name;
+
+            return SyntaxFacts.GetKeywordKind(name) != SyntaxKind.None ? "@" + name : name;
         }
     }
 }

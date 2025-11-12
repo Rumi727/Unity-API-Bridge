@@ -1,4 +1,4 @@
-﻿namespace RuniOS.APIBridge.UnityEngine
+﻿namespace RuniOS.Editor.APIBridge.UnityEngine
 {
     public partial class NumericFieldDraggerUtilityBridge
     {

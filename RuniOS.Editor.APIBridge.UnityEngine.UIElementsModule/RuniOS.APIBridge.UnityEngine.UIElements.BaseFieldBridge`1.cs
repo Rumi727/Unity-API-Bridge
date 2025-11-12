@@ -1,7 +1,7 @@
 ﻿using System;
 using UnityEngine;
 
-namespace RuniOS.APIBridge.UnityEngine.UIElements
+namespace RuniOS.Editor.APIBridge.UnityEngine.UIElements
 {
     public partial class BaseFieldBridge<TValueType>
     {

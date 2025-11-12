@@ -9,10 +9,11 @@ namespace RuniOS.APIBridge
         readonly partial struct InterfaceBuilder(BridgeGeneratorBuilder builder, INamedTypeSymbol targetSymbol)
         {
             public static void Build(BridgeGeneratorBuilder builder, INamedTypeSymbol targetSymbol) => new InterfaceBuilder(builder, targetSymbol).Build();
-            
+
+            readonly string bridgeNamespace = builder.bridgeNamespace;
             readonly string bridgeName = targetSymbol.GetBridgeTypeName();
             readonly string bridgeTypeName = targetSymbol.GetBridgeTypeName() + targetSymbol.GetTypeParametersText();
-            readonly string targetTypeName = targetSymbol.GetFullTypeName();
+            readonly string targetTypeName = targetSymbol.GetFullTypeName(builder.bridgeNamespace);
             readonly bool targetIsStatic = builder.forceStatic;
             readonly INamedTypeSymbol? targetPublicBaseType = targetSymbol.GetPublicBaseType();
             
@@ -31,7 +32,7 @@ namespace RuniOS.APIBridge
                 AppendLine();
                 
                 // __GetInstanceFrom의 매개변수 타입 설정
-                string getInstanceFromParamType = targetPublicBaseType == null ? "object" : targetPublicBaseType.GetFullTypeName();
+                string getInstanceFromParamType = targetPublicBaseType == null ? "object" : targetPublicBaseType.GetFullTypeName(bridgeNamespace);
 
                 if (!targetIsStatic)
                 {
@@ -43,7 +44,6 @@ namespace RuniOS.APIBridge
                     AppendLine("/// <summary>");
                     AppendLine("/// 타겟 타입의 인스턴스로 브릿지를 생성합니다.");
                     AppendLine("/// </summary>");
-                    AppendLine("/// <exception cref=\"global::System.ArgumentNullException\">인스턴스가 null일 경우 발생합니다.</exception>");
                     AppendLine("/// <exception cref=\"global::System.ArgumentException\">인스턴스의 타입이 유효하지 않을 경우 발생합니다.</exception>");
                     AppendLine("[return: global::System.Diagnostics.CodeAnalysis.NotNullIfNotNull(nameof(instance))]");
                     AppendLine($"public static {bridgeTypeName}? __GetInstanceFrom({getInstanceFromParamType}? instance)");

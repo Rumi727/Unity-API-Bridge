@@ -12,9 +12,10 @@ namespace RuniOS.APIBridge
         {
             public static void Build(BridgeGeneratorBuilder builder, INamedTypeSymbol targetSymbol) => new StructBuilder(builder, targetSymbol).Build();
             
+            readonly string bridgeNamespace = builder.bridgeNamespace;
             readonly string bridgeName = targetSymbol.GetBridgeTypeName();
             readonly string bridgeTypeName = targetSymbol.GetBridgeTypeName() + targetSymbol.GetTypeParametersText();
-            readonly string targetTypeName = targetSymbol.GetFullTypeName();
+            readonly string targetTypeName = targetSymbol.GetFullTypeName(builder.bridgeNamespace);
             readonly bool targetIsStatic = builder.forceStatic;
             readonly bool targetIsNonPublic = targetSymbol.IsNonPublicMember();
             
@@ -35,21 +36,32 @@ namespace RuniOS.APIBridge
                 // 모든 생성자에 대한 __CreateInstance 오버로드 생성  (정적으로 표시됐을 경우 경우 제외)
                 if (!targetIsStatic)
                 {
-                    if (!builder.skipCreateInstance)
+                    if (!builder.skipConstructors)
                     {
                         HashSet<string> processedConstructors = [];
                         bool anyNotDefaultCtor = targetSymbol.Constructors.Any(static c => !c.IsImplicitlyDeclared);
+                        int index = 0;
                         foreach (var ctor in targetSymbol.Constructors)
                         {
                             if (anyNotDefaultCtor && ctor.IsImplicitlyDeclared)
                                 continue;
                         
-                            var parameters = string.Join(", ", ctor.Parameters.GetParameterText());
-                            var callParameters = string.Join(", ", ctor.Parameters.GetCallParameterText());
+                            var parameters = string.Join(", ", ctor.Parameters.GetParameterText(bridgeNamespace));
+                            var callParameters = string.Join(", ", ctor.Parameters.GetCallParameterText(bridgeNamespace));
                             bool isNonPublic = ctor.IsNonPublicMember();
                             
                             if (!processedConstructors.Add(parameters))
                                 continue;
+                            
+                            if (builder.excludeConstructors.Contains(index))
+                            {
+                                AppendLine($"// (Index {index}) {parameters}");
+                                if (isNonPublic || targetIsNonPublic)
+                                    AppendLine();
+
+                                index++;
+                                continue;
+                            }
 
                             if (isNonPublic || targetIsNonPublic)
                             {
@@ -65,6 +77,8 @@ namespace RuniOS.APIBridge
 
                             if (isNonPublic || targetIsNonPublic)
                                 AppendLine();
+
+                            index++;
                         }
                     }
                     

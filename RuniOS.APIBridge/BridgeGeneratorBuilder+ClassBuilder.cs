@@ -12,10 +12,11 @@ namespace RuniOS.APIBridge
         readonly partial struct ClassBuilder(BridgeGeneratorBuilder builder, INamedTypeSymbol targetSymbol)
         {
             public static void Build(BridgeGeneratorBuilder builder, INamedTypeSymbol targetSymbol) => new ClassBuilder(builder, targetSymbol).Build();
-            
+
+            readonly string bridgeNamespace = builder.bridgeNamespace;
             readonly string bridgeName = targetSymbol.GetBridgeTypeName();
             readonly string bridgeTypeName = targetSymbol.GetBridgeTypeName() + targetSymbol.GetTypeParametersText();
-            readonly string targetTypeName = targetSymbol.GetFullTypeName();
+            readonly string targetTypeName = targetSymbol.GetFullTypeName(builder.bridgeNamespace);
             readonly bool targetIsAbstract = targetSymbol.IsAbstract;
             readonly bool targetIsStatic = targetSymbol.IsStatic || builder.forceStatic;
             readonly bool targetIsNonPublic = targetSymbol.IsNonPublicMember();
@@ -28,6 +29,8 @@ namespace RuniOS.APIBridge
 
             public void Build()
             {
+                string bridgeNamespace = this.bridgeNamespace;
+                
                 // __targetType 필드
                 AppendLine("/// <summary>");
                 AppendLine("/// 이 브릿지의 타겟 타입입니다.");
@@ -38,21 +41,33 @@ namespace RuniOS.APIBridge
                 // 모든 생성자에 대한 __CreateInstance 오버로드 생성 (정적 클래스일 경우 제외)
                 if (!targetIsStatic)
                 {
-                    if (!targetIsAbstract && !builder.skipCreateInstance) // 정적/추상 클래스는 인스턴스 생성 불가
+                    AppendLine("#nullable disable");
+                    
+                    if (!targetIsAbstract && !builder.skipConstructors) // 정적/추상 클래스는 인스턴스 생성 불가
                     {
                         HashSet<string> processedConstructors = [];
                         bool anyNotDefaultCtor = targetSymbol.Constructors.Any(static c => !c.IsImplicitlyDeclared);
+                        int index = 0;
                         foreach (var ctor in targetSymbol.Constructors)
                         {
                             if (anyNotDefaultCtor && ctor.IsImplicitlyDeclared)
                                 continue;
                             
-                            string parameters = string.Join(", ", ctor.Parameters.GetParameterText());
-                            string callParameters = string.Join(", ", ctor.Parameters.GetCallParameterText());
+                            string parameters = string.Join(", ", ctor.Parameters.GetParameterText(bridgeNamespace));
+                            string callParameters = string.Join(", ", ctor.Parameters.GetCallParameterText(bridgeNamespace));
                             bool isNonPublic = builder.includePublicMember || ctor.IsNonPublicMember();
-                            
+
                             if (!processedConstructors.Add(parameters))
                                 continue;
+                            
+                            if (builder.excludeConstructors.Contains(index))
+                            {
+                                AppendLine($"// (Index {index}) {parameters}");
+                                if (isNonPublic || targetIsNonPublic)
+                                    AppendLine();
+                                
+                                continue;
+                            }
 
                             if (isNonPublic || targetIsNonPublic)
                             {
@@ -74,9 +89,13 @@ namespace RuniOS.APIBridge
                                 .Select(static x => x.Type.GetNamedTypeSymbol())
                                 .OfType<INamedTypeSymbol>()
                                 .Where(static x => x.IsNonPublicMember())
-                                .Select(x => new BridgeGenerationData(targetAssemblies, x.OriginalDefinition, [string.Empty], ImmutableArray<string>.Empty, false, false, false)));
+                                .Select(x => new BridgeGenerationData(bridgeNamespace, targetAssemblies, x.OriginalDefinition, [string.Empty], ImmutableArray<string>.Empty, false, false, ImmutableHashSet<int>.Empty, false)));
+
+                            index++;
                         }
                     }
+                    
+                    AppendLine("#nullable restore");
 
                     // __cached 및 __GetInstanceFrom
                     // __cached의 키 타입은 항상 원래 타입
@@ -84,12 +103,11 @@ namespace RuniOS.APIBridge
                     AppendLine();
 
                     // __GetInstanceFrom의 매개변수 타입 설정
-                    string getInstanceFromParamType = targetPublicBaseType == null ? "object" : targetPublicBaseType.GetFullTypeName();
+                    string getInstanceFromParamType = targetPublicBaseType == null ? "object" : targetPublicBaseType.GetFullTypeName(bridgeNamespace);
 
                     AppendLine("/// <summary>");
                     AppendLine("/// 타겟 타입의 인스턴스로 브릿지를 생성합니다.");
                     AppendLine("/// </summary>");
-                    AppendLine("/// <exception cref=\"global::System.ArgumentNullException\">인스턴스가 null일 경우 발생합니다.</exception>");
                     AppendLine("/// <exception cref=\"global::System.ArgumentException\">인스턴스의 타입이 유효하지 않을 경우 발생합니다.</exception>");
                     AppendLine("[return: global::System.Diagnostics.CodeAnalysis.NotNullIfNotNull(nameof(instance))]");
                     AppendLine($"public static {bridgeTypeName}? __GetInstanceFrom({getInstanceFromParamType}? instance)");

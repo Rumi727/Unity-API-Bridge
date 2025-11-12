@@ -4,7 +4,7 @@
         <TargetFramework>netstandard2.1</TargetFramework>
         <LangVersion>default</LangVersion>
         <Nullable>enable</Nullable>
-        <RootNamespace>RuniOS.APIMarshal.UnityEngine.UIElements</RootNamespace>
+        <RootNamespace>RuniOS.Editor.APIBridge.UnityEditor.UIElements</RootNamespace>
         <GenerateDocumentationFile>true</GenerateDocumentationFile>
     </PropertyGroup>
 
@@ -16,8 +16,18 @@
     </ItemGroup>
 
     <ItemGroup>
-        <Reference Include="UnityEngine.UIElementsModule" Publicize="true">
-            <HintPath>..\dlls\UnityEngine.UIElementsModule.dll</HintPath>
+        <ProjectReference Include="..\RuniOS.APIBridge\RuniOS.APIBridge.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false">
+            <PrivateAssets>all</PrivateAssets>
+            <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+        </ProjectReference>
+    </ItemGroup>
+
+    <ItemGroup>
+        <Reference Include="UnityEditor.QuickSearchModule" Publicize="true">
+            <HintPath>..\dlls\UnityEditor.QuickSearchModule.dll</HintPath>
+        </Reference>
+        <Reference Include="UnityEditor.UIBuilderModule" Publicize="true">
+            <HintPath>..\dlls\UnityEditor.UIBuilderModule.dll</HintPath>
         </Reference>
     </ItemGroup>
 
