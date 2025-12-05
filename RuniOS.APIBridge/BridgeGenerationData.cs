@@ -13,6 +13,7 @@ namespace RuniOS.APIBridge
         bool forceStatic,
         bool skipConstructors,
         ImmutableHashSet<int> excludeConstructors,
-        bool includePublicMember
+        bool includePublicMember,
+        bool onlyByMyself
     );
 }

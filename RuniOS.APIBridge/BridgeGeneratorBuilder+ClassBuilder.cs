@@ -52,6 +52,21 @@ namespace RuniOS.APIBridge
                         {
                             if (anyNotDefaultCtor && ctor.IsImplicitlyDeclared)
                                 continue;
+
+                            {
+                                var nonPublicPars = ctor.Parameters
+                                    .Select(static x => x.Type.GetNamedTypeSymbol())
+                                    .OfType<INamedTypeSymbol>()
+                                    .Where(static x => x.IsNonPublicMember());
+                                
+                                if (builder.onlyByMyself && nonPublicPars.Any())
+                                    continue;
+                                
+                                ImmutableArray<string> targetAssemblies = builder.targetAssemblies;
+                                bool onlyByMyself = builder.onlyByMyself;
+                                builder.nonPublicTypeSymbols.AddRange(nonPublicPars
+                                    .Select(x => new BridgeGenerationData(bridgeNamespace, targetAssemblies, x.OriginalDefinition, [string.Empty], ImmutableArray<string>.Empty, false, false, ImmutableHashSet<int>.Empty, false, onlyByMyself)));
+                            }
                             
                             string parameters = string.Join(", ", ctor.Parameters.GetParameterText(bridgeNamespace));
                             string callParameters = string.Join(", ", ctor.Parameters.GetCallParameterText(bridgeNamespace));
@@ -83,13 +98,6 @@ namespace RuniOS.APIBridge
 
                             if (isNonPublic || targetIsNonPublic)
                                 AppendLine();
-
-                            ImmutableArray<string> targetAssemblies = builder.targetAssemblies;
-                            builder.nonPublicTypeSymbols.AddRange(ctor.Parameters
-                                .Select(static x => x.Type.GetNamedTypeSymbol())
-                                .OfType<INamedTypeSymbol>()
-                                .Where(static x => x.IsNonPublicMember())
-                                .Select(x => new BridgeGenerationData(bridgeNamespace, targetAssemblies, x.OriginalDefinition, [string.Empty], ImmutableArray<string>.Empty, false, false, ImmutableHashSet<int>.Empty, false)));
 
                             index++;
                         }

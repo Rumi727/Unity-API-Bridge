@@ -9,7 +9,7 @@ namespace RuniOS.APIBridge
 {
     public partial class BridgeGeneratorBuilder
     {
-        public static string Build(string bridgeNamespace, ImmutableArray<string> targetAssemblies, INamedTypeSymbol targetSymbol, ImmutableArray<string> includeMembers, ImmutableArray<string> excludeMembers, bool forceStatic, bool skipConstructors, ImmutableHashSet<int> excludeConstructors, bool includePublicMember, out IReadOnlyList<BridgeGenerationData> nonPublicTypeSymbols, int tabSpaceCount = 4) => new BridgeGeneratorBuilder(bridgeNamespace, targetAssemblies, targetSymbol, includeMembers, excludeMembers, forceStatic, skipConstructors, excludeConstructors, includePublicMember, tabSpaceCount).Build(out nonPublicTypeSymbols);
+        public static string Build(string bridgeNamespace, ImmutableArray<string> targetAssemblies, INamedTypeSymbol targetSymbol, ImmutableArray<string> includeMembers, ImmutableArray<string> excludeMembers, bool forceStatic, bool skipConstructors, ImmutableHashSet<int> excludeConstructors, bool includePublicMember, bool onlyByMyself, out IReadOnlyList<BridgeGenerationData> nonPublicTypeSymbols, int tabSpaceCount = 4) => new BridgeGeneratorBuilder(bridgeNamespace, targetAssemblies, targetSymbol, includeMembers, excludeMembers, forceStatic, skipConstructors, excludeConstructors, includePublicMember, onlyByMyself, tabSpaceCount).Build(out nonPublicTypeSymbols);
 
         readonly string bridgeNamespace;
         readonly ImmutableArray<string> targetAssemblies;
@@ -20,6 +20,7 @@ namespace RuniOS.APIBridge
         readonly bool skipConstructors;
         readonly ImmutableHashSet<int> excludeConstructors;
         readonly bool includePublicMember;
+        readonly bool onlyByMyself;
         readonly int tabSpaceCount;
         
         readonly StringBuilder builder = new StringBuilder();
@@ -28,7 +29,7 @@ namespace RuniOS.APIBridge
         
         readonly List<BridgeGenerationData> nonPublicTypeSymbols = [];
         
-        BridgeGeneratorBuilder(string bridgeNamespace, ImmutableArray<string> targetAssemblies, INamedTypeSymbol targetSymbol, ImmutableArray<string> includeMembers, ImmutableArray<string> excludeMembers, bool forceStatic, bool skipConstructors, ImmutableHashSet<int> excludeConstructors, bool includePublicMember, int tabSpaceCount = 4)
+        BridgeGeneratorBuilder(string bridgeNamespace, ImmutableArray<string> targetAssemblies, INamedTypeSymbol targetSymbol, ImmutableArray<string> includeMembers, ImmutableArray<string> excludeMembers, bool forceStatic, bool skipConstructors, ImmutableHashSet<int> excludeConstructors, bool includePublicMember, bool onlyByMyself, int tabSpaceCount = 4)
         {
             this.bridgeNamespace = bridgeNamespace;
             this.targetAssemblies = targetAssemblies;
@@ -39,6 +40,7 @@ namespace RuniOS.APIBridge
             this.skipConstructors = skipConstructors;
             this.excludeConstructors = excludeConstructors;
             this.includePublicMember = includePublicMember;
+            this.onlyByMyself = onlyByMyself;
             this.tabSpaceCount = tabSpaceCount;
         }
 

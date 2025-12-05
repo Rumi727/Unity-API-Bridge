@@ -99,7 +99,10 @@ namespace RuniOS.APIBridge
                                     if (namedTypeSymbol.IsNonPublicMember())
                                     {
                                         fieldTypeIsNonPublic = true;
-                                        builder.nonPublicTypeSymbols.Add(new BridgeGenerationData(bridgeNamespace, builder.targetAssemblies, namedTypeSymbol.OriginalDefinition, ImmutableArray<string>.Empty, ImmutableArray<string>.Empty, false, false, ImmutableHashSet<int>.Empty, false));
+                                        if (builder.onlyByMyself)
+                                            break;
+                                        
+                                        builder.nonPublicTypeSymbols.Add(new BridgeGenerationData(bridgeNamespace, builder.targetAssemblies, namedTypeSymbol.OriginalDefinition, ImmutableArray<string>.Empty, ImmutableArray<string>.Empty, false, false, ImmutableHashSet<int>.Empty, false, builder.onlyByMyself));
                                     }
                                 }
 
@@ -171,7 +174,10 @@ namespace RuniOS.APIBridge
                                     if (namedTypeSymbol.IsNonPublicMember())
                                     {
                                         propertyTypeIsNonPublic = true;
-                                        builder.nonPublicTypeSymbols.Add(new BridgeGenerationData(bridgeNamespace, builder.targetAssemblies, namedTypeSymbol.OriginalDefinition, ImmutableArray<string>.Empty, ImmutableArray<string>.Empty, false, false, ImmutableHashSet<int>.Empty, false));
+                                        if (builder.onlyByMyself)
+                                            break;
+                                        
+                                        builder.nonPublicTypeSymbols.Add(new BridgeGenerationData(bridgeNamespace, builder.targetAssemblies, namedTypeSymbol.OriginalDefinition, ImmutableArray<string>.Empty, ImmutableArray<string>.Empty, false, false, ImmutableHashSet<int>.Empty, false, builder.onlyByMyself));
                                     }
                                 }
 
@@ -266,17 +272,28 @@ namespace RuniOS.APIBridge
 
                                         if (namedReturnType.IsNonPublicMember())
                                         {
-                                            builder.nonPublicTypeSymbols.Add(new BridgeGenerationData(bridgeNamespace, builder.targetAssemblies, namedReturnType.OriginalDefinition, ImmutableArray<string>.Empty, ImmutableArray<string>.Empty, false, false, ImmutableHashSet<int>.Empty, false));
+                                            if (builder.onlyByMyself)
+                                                break;
+                                            
+                                            builder.nonPublicTypeSymbols.Add(new BridgeGenerationData(bridgeNamespace, builder.targetAssemblies, namedReturnType.OriginalDefinition, ImmutableArray<string>.Empty, ImmutableArray<string>.Empty, false, false, ImmutableHashSet<int>.Empty, false, builder.onlyByMyself));
                                             returnTypeIsNonPublic = true;
                                         }
                                     }
                                 }
+                                
 
-                                builder.nonPublicTypeSymbols.AddRange(method.Parameters
-                                    .Select(static x => x.Type.GetNamedTypeSymbol())
-                                    .OfType<INamedTypeSymbol>()
-                                    .Where(static x => x.IsNonPublicMember())
-                                    .Select(x => new BridgeGenerationData(bridgeNamespace, builder.targetAssemblies, x.OriginalDefinition, ImmutableArray<string>.Empty, ImmutableArray<string>.Empty, false, false, ImmutableHashSet<int>.Empty, false)));
+                                {
+                                    var nonPublicPars = method.Parameters
+                                        .Select(static x => x.Type.GetNamedTypeSymbol())
+                                        .OfType<INamedTypeSymbol>()
+                                        .Where(static x => x.IsNonPublicMember());
+                                    
+                                    if (builder.onlyByMyself && nonPublicPars.Any())
+                                        break;
+                                    
+                                    builder.nonPublicTypeSymbols.AddRange(nonPublicPars
+                                        .Select(x => new BridgeGenerationData(bridgeNamespace, builder.targetAssemblies, x.OriginalDefinition, ImmutableArray<string>.Empty, ImmutableArray<string>.Empty, false, false, ImmutableHashSet<int>.Empty, false, builder.onlyByMyself)));
+                                }
 
                                 if (returnTypeIsDelegate && returnTypeIsNonPublic)
                                     StartComment();
