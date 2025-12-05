@@ -58,8 +58,10 @@ namespace RuniOS.APIBridge
                                     .Select(static x => x.Type.GetNamedTypeSymbol())
                                     .OfType<INamedTypeSymbol>()
                                     .Where(static x => x.IsNonPublicMember());
-                                
-                                if (builder.onlyByMyself && nonPublicPars.Any())
+
+                                // ReSharper disable once LocalVariableHidesPrimaryConstructorParameter
+                                INamedTypeSymbol targetSymbol = builder.targetSymbol;
+                                if (builder.onlyByMyself && nonPublicPars.Any(x => !SymbolEqualityComparer.Default.Equals(targetSymbol, x)))
                                     continue;
                                 
                                 ImmutableArray<string> targetAssemblies = builder.targetAssemblies;

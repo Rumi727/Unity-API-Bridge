@@ -99,7 +99,7 @@ namespace RuniOS.APIBridge
                                     if (namedTypeSymbol.IsNonPublicMember())
                                     {
                                         fieldTypeIsNonPublic = true;
-                                        if (builder.onlyByMyself)
+                                        if (builder.onlyByMyself && !SymbolEqualityComparer.Default.Equals(targetSymbol, namedTypeSymbol))
                                             break;
                                         
                                         builder.nonPublicTypeSymbols.Add(new BridgeGenerationData(bridgeNamespace, builder.targetAssemblies, namedTypeSymbol.OriginalDefinition, ImmutableArray<string>.Empty, ImmutableArray<string>.Empty, false, false, ImmutableHashSet<int>.Empty, false, builder.onlyByMyself));
@@ -174,7 +174,7 @@ namespace RuniOS.APIBridge
                                     if (namedTypeSymbol.IsNonPublicMember())
                                     {
                                         propertyTypeIsNonPublic = true;
-                                        if (builder.onlyByMyself)
+                                        if (builder.onlyByMyself && !SymbolEqualityComparer.Default.Equals(targetSymbol, namedTypeSymbol))
                                             break;
                                         
                                         builder.nonPublicTypeSymbols.Add(new BridgeGenerationData(bridgeNamespace, builder.targetAssemblies, namedTypeSymbol.OriginalDefinition, ImmutableArray<string>.Empty, ImmutableArray<string>.Empty, false, false, ImmutableHashSet<int>.Empty, false, builder.onlyByMyself));
@@ -272,7 +272,7 @@ namespace RuniOS.APIBridge
 
                                         if (namedReturnType.IsNonPublicMember())
                                         {
-                                            if (builder.onlyByMyself)
+                                            if (builder.onlyByMyself && !SymbolEqualityComparer.Default.Equals(targetSymbol, namedReturnType))
                                                 break;
                                             
                                             builder.nonPublicTypeSymbols.Add(new BridgeGenerationData(bridgeNamespace, builder.targetAssemblies, namedReturnType.OriginalDefinition, ImmutableArray<string>.Empty, ImmutableArray<string>.Empty, false, false, ImmutableHashSet<int>.Empty, false, builder.onlyByMyself));
@@ -287,8 +287,10 @@ namespace RuniOS.APIBridge
                                         .Select(static x => x.Type.GetNamedTypeSymbol())
                                         .OfType<INamedTypeSymbol>()
                                         .Where(static x => x.IsNonPublicMember());
-                                    
-                                    if (builder.onlyByMyself && nonPublicPars.Any())
+
+                                    // ReSharper disable once LocalVariableHidesPrimaryConstructorParameter
+                                    INamedTypeSymbol targetSymbol = builder.targetSymbol;
+                                    if (builder.onlyByMyself && nonPublicPars.Any(x => !SymbolEqualityComparer.Default.Equals(targetSymbol, x)))
                                         break;
                                     
                                     builder.nonPublicTypeSymbols.AddRange(nonPublicPars
