@@ -32,7 +32,7 @@
     </ItemGroup>
 
     <Target Name="PostBuild" AfterTargets="PostBuildEvent">
-      <Exec Command="call &quot;$(SolutionDir)postbuild.bat&quot; &quot;$(SolutionDir)&quot; &quot;$(OutputPath)&quot; &quot;$(AssemblyName)&quot;" />
+      <Exec Command="sh &quot;$(SolutionDir)postbuild.sh&quot; &quot;$(SolutionDir)&quot; &quot;$(OutputPath)&quot; &quot;$(AssemblyName)&quot;" />
     </Target>
 
 </Project>

@@ -1,7 +1,6 @@
 ﻿UnityEditor.CoreModule.dll
 UnityEditor.QuickSearchModule.dll
 UnityEditor.UI.dll
-UnityEditor.UIBuilderModule.dll
 UnityEditor.UIElementsModule.dll
 UnityEngine.AssetBundleModule.dll
 UnityEngine.AudioModule.dll
