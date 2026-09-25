@@ -2,4 +2,4 @@
 using UnityEngine;
 
 [assembly: GenerateAPIBridgeForAssembly("UnityEngine.CoreModule")]
-[assembly: GenerateAPIBridgeForType(typeof(DrivenPropertyManager), forceStatic = true)]
+[assembly: GenerateAPIBridgeForType(typeof(DrivenPropertyManager), includeMember = ["RegisterProperty", "TryRegisterProperty", "UnregisterProperty", "UnregisterProperties"], forceStatic = true)]

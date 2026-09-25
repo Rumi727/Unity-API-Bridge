@@ -3,4 +3,4 @@ using UnityEditor.Search;
 
 [assembly: APIBridgeNamespace("RuniOS.Editor.APIBridge")]
 [assembly: GenerateAPIBridgeForAssembly("UnityEditor.QuickSearchModule")]
-[assembly: GenerateAPIBridgeForType(typeof(SearchProvider))]
+[assembly: GenerateAPIBridgeForType(typeof(SearchProvider), includeMember = ["tableConfig"], onlyByMyself = true)]
