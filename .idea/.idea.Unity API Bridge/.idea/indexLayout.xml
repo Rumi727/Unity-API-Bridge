@@ -3,6 +3,7 @@
   <component name="UserContentModel">
     <attachedFolders>
       <Path>dlls</Path>
+      <Path>nuget-packages</Path>
     </attachedFolders>
     <explicitIncludes />
     <explicitExcludes />

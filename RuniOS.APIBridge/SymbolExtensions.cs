@@ -23,6 +23,8 @@ namespace RuniOS.APIBridge
                     return false;
                 case IPropertySymbol propertySymbol:
                     return (propertySymbol.GetMethod?.IsNonPublicMember() ?? false) || (propertySymbol.SetMethod?.IsNonPublicMember() ?? false);
+                case IEventSymbol eventSymbol:
+                    return (eventSymbol.AddMethod?.IsNonPublicMember() ?? false) || (eventSymbol.RemoveMethod?.IsNonPublicMember() ?? false);
             }
 
             if (symbol.DeclaredAccessibility != Accessibility.Public)

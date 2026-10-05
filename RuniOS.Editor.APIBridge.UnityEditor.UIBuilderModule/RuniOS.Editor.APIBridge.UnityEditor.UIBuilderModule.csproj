@@ -9,7 +9,7 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <PackageReference Include="BepInEx.AssemblyPublicizer.MSBuild" Version="0.4.3" OutputItemType="Analyzer" ReferenceOutputAssembly="false">
+        <PackageReference Include="BepInEx.AssemblyPublicizer.MSBuild" Version="0.4.3-dev" OutputItemType="Analyzer" ReferenceOutputAssembly="false">
             <PrivateAssets>all</PrivateAssets>
             <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
         </PackageReference>

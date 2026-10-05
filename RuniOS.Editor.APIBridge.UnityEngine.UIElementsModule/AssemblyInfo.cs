@@ -9,3 +9,4 @@ using UnityEngine.UIElements;
 [assembly: GenerateAPIBridgeForType(typeof(IPrefixLabel))]
 [assembly: GenerateAPIBridgeForType(typeof(TextInputBaseField<>), includeMember = ["m_TextInputBase"])]
 //[assembly: GenerateAPIBridgeForType(typeof(Panel), skipConstructors = true, onlyByMyself = true)]
+[assembly: GenerateAPIBridgeForType(typeof(IMGUIContainer), onlyByMyself = true, includeMember = ["GetCurrentIMGUIContainer", "MakeCurrentIMGUIContainerDirty"])]
