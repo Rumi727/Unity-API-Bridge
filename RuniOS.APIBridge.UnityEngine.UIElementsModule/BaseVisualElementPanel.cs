@@ -6,13 +6,13 @@ namespace RuniOS.APIBridge.UnityEngine.UIElements
 {
     public partial class BaseVisualElementPanelBridge
     {
-        readonly Dictionary<HierarchyEvent, Stack<global::UnityEngine.UIElements.HierarchyEvent>> __registeredHierarchyChangedEvents = [];
+        readonly Dictionary<HierarchyEventBridge, Stack<HierarchyEvent>> __registeredHierarchyChangedEvents = [];
 
-        public event HierarchyEvent hierarchyChanged
+        public event HierarchyEventBridge hierarchyChanged
         {
             add
             {
-                global::UnityEngine.UIElements.HierarchyEvent method = Method;
+                HierarchyEvent method = Method;
                 if (!__registeredHierarchyChangedEvents.TryGetValue(value, out var methods))
                 {
                     methods = [];
@@ -22,15 +22,15 @@ namespace RuniOS.APIBridge.UnityEngine.UIElements
                 methods.Push(method);
                 ((BaseVisualElementPanel)__instance).hierarchyChanged += method;
 
-                void Method(VisualElement ve, global::UnityEngine.UIElements.HierarchyChangeType changeType, IReadOnlyList<VisualElement>? additionalContext = null) =>
-                    value.Invoke(ve, (HierarchyChangeType)changeType, additionalContext);
+                void Method(VisualElement ve, HierarchyChangeType changeType, IReadOnlyList<VisualElement>? additionalContext = null) =>
+                    value.Invoke(ve, (HierarchyChangeTypeBridge)changeType, additionalContext);
             }
             remove
             {
                 if (!__registeredHierarchyChangedEvents.TryGetValue(value, out var methods) || methods.Count == 0)
                     return;
 
-                global::UnityEngine.UIElements.HierarchyEvent method = methods.Pop();
+                HierarchyEvent method = methods.Pop();
                 if (methods.Count == 0)
                     __registeredHierarchyChangedEvents.Remove(value);
 
