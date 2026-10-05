@@ -25,6 +25,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RuniOS.APIBridge.UnityEngin
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RuniOS.Editor.APIMarshal.UnityEditor.CoreModule", "RuniOS.Editor.APIMarshal.UnityEditor.CoreModule\RuniOS.Editor.APIMarshal.UnityEditor.CoreModule.csproj", "{32248941-3313-43E9-AC71-8ACD9D012522}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RuniOS.APIBridge.UnityEngine.UIElementsModule", "RuniOS.APIBridge.UnityEngine.UIElementsModule\RuniOS.APIBridge.UnityEngine.UIElementsModule.csproj", "{7DDFBADF-570A-4A18-8D1D-0AE73F556ADB}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -75,6 +77,10 @@ Global
 		{32248941-3313-43E9-AC71-8ACD9D012522}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{32248941-3313-43E9-AC71-8ACD9D012522}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{32248941-3313-43E9-AC71-8ACD9D012522}.Release|Any CPU.Build.0 = Release|Any CPU
+		{7DDFBADF-570A-4A18-8D1D-0AE73F556ADB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{7DDFBADF-570A-4A18-8D1D-0AE73F556ADB}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{7DDFBADF-570A-4A18-8D1D-0AE73F556ADB}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{7DDFBADF-570A-4A18-8D1D-0AE73F556ADB}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
